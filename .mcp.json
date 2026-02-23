@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "spec-manager": {
+      "command": "python3",
+      "args": ["-m", "spec_manager.mcp_server"],
+      "cwd": "/Users/peter/Code/Hobby/kuzu"
+    }
+  }
+}

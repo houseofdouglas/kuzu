@@ -1,129 +1,382 @@
 [
-  { "from": "common.type-system",      "to": "common" },
-  { "from": "common.value-vector",     "to": "common" },
-  { "from": "common.task-scheduler",   "to": "common" },
-  { "from": "common.filesystem",       "to": "common" },
-  { "from": "common.serializer",       "to": "common" },
-  { "from": "common.exceptions",       "to": "common" },
-  { "from": "common.arrow-interop",    "to": "common" },
-  { "from": "common.null-mask",        "to": "common" },
-
-  { "from": "storage.buffer-manager",    "to": "storage-engine" },
-  { "from": "storage.wal",               "to": "storage-engine" },
-  { "from": "storage.shadow-paging",     "to": "storage-engine" },
-  { "from": "storage.column-storage",    "to": "storage-engine" },
-  { "from": "storage.compression",       "to": "storage-engine" },
-  { "from": "storage.node-rel-tables",   "to": "storage-engine" },
-  { "from": "storage.hash-index",        "to": "storage-engine" },
-  { "from": "storage.local-storage",     "to": "storage-engine" },
-  { "from": "storage.statistics",        "to": "storage-engine" },
-  { "from": "storage.checkpointer",      "to": "storage-engine" },
-  { "from": "storage.storage-manager",   "to": "storage-engine" },
-
-  { "from": "catalog.schema-registry",  "to": "catalog" },
-  { "from": "catalog.catalog-entries",  "to": "catalog" },
-  { "from": "catalog.mvcc-visibility",  "to": "catalog" },
-
-  { "from": "transaction.lifecycle",          "to": "transaction" },
-  { "from": "transaction.undo-buffer",        "to": "transaction" },
-  { "from": "transaction.context",            "to": "transaction" },
-  { "from": "transaction.snapshot-isolation", "to": "transaction" },
-
-  { "from": "parser.cypher-grammar",  "to": "parser" },
-  { "from": "parser.ast-nodes",       "to": "parser" },
-  { "from": "parser.transformer",     "to": "parser" },
-  { "from": "parser.entry-point",     "to": "parser" },
-
-  // ── binder ──────────────────────────────────────────────────────────────
-  { "from": "binder.bound-ast",         "to": "binder" },
-  { "from": "binder.statement-binder",  "to": "binder" },
-  { "from": "binder.expression-binder", "to": "binder" },
-  { "from": "binder.query-graph",       "to": "binder" },
-  { "from": "binder.ddl-binding",       "to": "binder" },
-
-  // ── planner ──────────────────────────────────────────────────────────────
-  { "from": "planner.logical-operators",    "to": "planner" },
-  { "from": "planner.join-order",           "to": "planner" },
-  { "from": "planner.subquery-planning",    "to": "planner" },
-
-  // ── optimizer ────────────────────────────────────────────────────────────
-  { "from": "optimizer.filter-pushdown",   "to": "optimizer" },
-  { "from": "optimizer.factorization",     "to": "optimizer" },
-  { "from": "optimizer.join-acceleration", "to": "optimizer" },
-  { "from": "optimizer.limit-topk",        "to": "optimizer" },
-
-  // ── expression-evaluator ─────────────────────────────────────────────────
-  { "from": "evaluator.function-evaluator",   "to": "expression-evaluator" },
-  { "from": "evaluator.literal-reference",    "to": "expression-evaluator" },
-  { "from": "evaluator.complex-evaluators",   "to": "expression-evaluator" },
-  { "from": "evaluator.expression-mapper",    "to": "expression-evaluator" },
-
-  // ── function-library ─────────────────────────────────────────────────────
-  { "from": "function.scalar-functions",    "to": "function-library" },
-  { "from": "function.aggregate-functions", "to": "function-library" },
-  { "from": "function.table-functions",     "to": "function-library" },
-  { "from": "function.cast-functions",      "to": "function-library" },
-  { "from": "function.function-registry",   "to": "function-library" },
-
-  // ── graph-analytics ──────────────────────────────────────────────────────
-  { "from": "gds.graph-model",         "to": "graph-analytics" },
-  { "from": "gds.algorithms",          "to": "graph-analytics" },
-  { "from": "gds.frontier-execution",  "to": "graph-analytics" },
-
-  // ── processor ────────────────────────────────────────────────────────────
-  { "from": "processor.plan-mapper",        "to": "processor" },
-  { "from": "processor.scan-operators",     "to": "processor" },
-  { "from": "processor.hash-join",          "to": "processor" },
-  { "from": "processor.aggregate",          "to": "processor" },
-  { "from": "processor.dml-operators",      "to": "processor" },
-  { "from": "processor.ddl-operators",      "to": "processor" },
-  { "from": "processor.result-collection",  "to": "processor" },
-  { "from": "processor.recursive-extend",   "to": "processor" },
-  { "from": "processor.order-by",           "to": "processor" },
-
-  // ── extension-runtime ────────────────────────────────────────────────────
-  { "from": "ext-runtime.extension-points", "to": "extension-runtime" },
-  { "from": "ext-runtime.loader",           "to": "extension-runtime" },
-  { "from": "ext-runtime.installer",        "to": "extension-runtime" },
-  { "from": "ext-runtime.catalog-extension","to": "extension-runtime" },
-
-  // ── extensions ───────────────────────────────────────────────────────────
-  { "from": "ext.algo",                     "to": "extensions" },
-  { "from": "ext.fts",                      "to": "extensions" },
-  { "from": "ext.vector",                   "to": "extensions" },
-  { "from": "ext.external-db-connectors",   "to": "extensions" },
-  { "from": "ext.cloud-format-connectors",  "to": "extensions" },
-
-  // ── public-api ───────────────────────────────────────────────────────────
-  { "from": "api.database",          "to": "public-api" },
-  { "from": "api.connection",        "to": "public-api" },
-  { "from": "api.query-result",      "to": "public-api" },
-  { "from": "api.prepared-statement","to": "public-api" },
-  { "from": "api.client-context",    "to": "public-api" },
-
-  // ── c-api ────────────────────────────────────────────────────────────────
-  { "from": "c-api.bindings",        "to": "c-api" },
-
-  // ── language-bindings ────────────────────────────────────────────────────
-  { "from": "binding.python",  "to": "language-bindings" },
-  { "from": "binding.java",    "to": "language-bindings" },
-  { "from": "binding.nodejs",  "to": "language-bindings" },
-  { "from": "binding.rust",    "to": "language-bindings" },
-  { "from": "binding.wasm",    "to": "language-bindings" },
-  { "from": "binding.shell",   "to": "language-bindings" },
-
-  // ── test-infrastructure ──────────────────────────────────────────────────
-  { "from": "test.e2e-runner",          "to": "test-infrastructure" },
-  { "from": "test.cypher-test-files",   "to": "test-infrastructure" },
-  { "from": "test.component-tests",     "to": "test-infrastructure" },
-  { "from": "test.graph-test-infra",    "to": "test-infrastructure" },
-
-  // ── Layer 4: Component -> Interface ──────────────────────────────────────
-  { "from": "public-api",       "to": "iface.cpp-embed-api" },
-  { "from": "c-api",            "to": "iface.c-abi" },
-  { "from": "extension-runtime","to": "iface.extension-load-protocol" },
-  { "from": "extension-runtime","to": "iface.extension-pipeline-hooks" },
-  { "from": "function-library", "to": "iface.table-function-contract" },
-  { "from": "parser",           "to": "iface.cypher-language" },
-  { "from": "language-bindings","to": "iface.cli-shell" }
+  {
+    "from": "api.client-context",
+    "to": "public-api"
+  },
+  {
+    "from": "api.connection",
+    "to": "public-api"
+  },
+  {
+    "from": "api.database",
+    "to": "public-api"
+  },
+  {
+    "from": "api.prepared-statement",
+    "to": "public-api"
+  },
+  {
+    "from": "api.query-result",
+    "to": "public-api"
+  },
+  {
+    "from": "binder.bound-ast",
+    "to": "binder"
+  },
+  {
+    "from": "binder.ddl-binding",
+    "to": "binder"
+  },
+  {
+    "from": "binder.expression-binder",
+    "to": "binder"
+  },
+  {
+    "from": "binder.query-graph",
+    "to": "binder"
+  },
+  {
+    "from": "binder.statement-binder",
+    "to": "binder"
+  },
+  {
+    "from": "binding.java",
+    "to": "language-bindings"
+  },
+  {
+    "from": "binding.nodejs",
+    "to": "language-bindings"
+  },
+  {
+    "from": "binding.python",
+    "to": "language-bindings"
+  },
+  {
+    "from": "binding.rust",
+    "to": "language-bindings"
+  },
+  {
+    "from": "binding.shell",
+    "to": "language-bindings"
+  },
+  {
+    "from": "binding.wasm",
+    "to": "language-bindings"
+  },
+  {
+    "from": "c-api",
+    "to": "iface.c-abi"
+  },
+  {
+    "from": "c-api.bindings",
+    "to": "c-api"
+  },
+  {
+    "from": "catalog.catalog-entries",
+    "to": "catalog"
+  },
+  {
+    "from": "catalog.mvcc-visibility",
+    "to": "catalog"
+  },
+  {
+    "from": "catalog.schema-registry",
+    "to": "catalog"
+  },
+  {
+    "from": "common.arrow-interop",
+    "to": "common"
+  },
+  {
+    "from": "common.exceptions",
+    "to": "common"
+  },
+  {
+    "from": "common.filesystem",
+    "to": "common"
+  },
+  {
+    "from": "common.null-mask",
+    "to": "common"
+  },
+  {
+    "from": "common.serializer",
+    "to": "common"
+  },
+  {
+    "from": "common.task-scheduler",
+    "to": "common"
+  },
+  {
+    "from": "common.type-system",
+    "to": "common"
+  },
+  {
+    "from": "common.value-vector",
+    "to": "common"
+  },
+  {
+    "from": "evaluator.complex-evaluators",
+    "to": "expression-evaluator"
+  },
+  {
+    "from": "evaluator.expression-mapper",
+    "to": "expression-evaluator"
+  },
+  {
+    "from": "evaluator.function-evaluator",
+    "to": "expression-evaluator"
+  },
+  {
+    "from": "evaluator.literal-reference",
+    "to": "expression-evaluator"
+  },
+  {
+    "from": "ext-runtime.catalog-extension",
+    "to": "extension-runtime"
+  },
+  {
+    "from": "ext-runtime.extension-points",
+    "to": "extension-runtime"
+  },
+  {
+    "from": "ext-runtime.installer",
+    "to": "extension-runtime"
+  },
+  {
+    "from": "ext-runtime.loader",
+    "to": "extension-runtime"
+  },
+  {
+    "from": "ext.algo",
+    "to": "extensions"
+  },
+  {
+    "from": "ext.cloud-format-connectors",
+    "to": "extensions"
+  },
+  {
+    "from": "ext.external-db-connectors",
+    "to": "extensions"
+  },
+  {
+    "from": "ext.fts",
+    "to": "extensions"
+  },
+  {
+    "from": "ext.vector",
+    "to": "extensions"
+  },
+  {
+    "from": "extension-runtime",
+    "to": "iface.extension-load-protocol"
+  },
+  {
+    "from": "extension-runtime",
+    "to": "iface.extension-pipeline-hooks"
+  },
+  {
+    "from": "function-library",
+    "to": "iface.table-function-contract"
+  },
+  {
+    "from": "function.aggregate-functions",
+    "to": "function-library"
+  },
+  {
+    "from": "function.cast-functions",
+    "to": "function-library"
+  },
+  {
+    "from": "function.function-registry",
+    "to": "function-library"
+  },
+  {
+    "from": "function.scalar-functions",
+    "to": "function-library"
+  },
+  {
+    "from": "function.table-functions",
+    "to": "function-library"
+  },
+  {
+    "from": "gds.algorithms",
+    "to": "graph-analytics"
+  },
+  {
+    "from": "gds.frontier-execution",
+    "to": "graph-analytics"
+  },
+  {
+    "from": "gds.graph-model",
+    "to": "graph-analytics"
+  },
+  {
+    "from": "language-bindings",
+    "to": "iface.cli-shell"
+  },
+  {
+    "from": "optimizer.factorization",
+    "to": "optimizer"
+  },
+  {
+    "from": "optimizer.filter-pushdown",
+    "to": "optimizer"
+  },
+  {
+    "from": "optimizer.join-acceleration",
+    "to": "optimizer"
+  },
+  {
+    "from": "optimizer.limit-topk",
+    "to": "optimizer"
+  },
+  {
+    "from": "parser",
+    "to": "iface.cypher-language"
+  },
+  {
+    "from": "parser.ast-nodes",
+    "to": "parser"
+  },
+  {
+    "from": "parser.cypher-grammar",
+    "to": "parser"
+  },
+  {
+    "from": "parser.entry-point",
+    "to": "parser"
+  },
+  {
+    "from": "parser.transformer",
+    "to": "parser"
+  },
+  {
+    "from": "planner.join-order",
+    "to": "planner"
+  },
+  {
+    "from": "planner.logical-operators",
+    "to": "planner"
+  },
+  {
+    "from": "planner.subquery-planning",
+    "to": "planner"
+  },
+  {
+    "from": "processor.aggregate",
+    "to": "processor"
+  },
+  {
+    "from": "processor.ddl-operators",
+    "to": "processor"
+  },
+  {
+    "from": "processor.dml-operators",
+    "to": "processor"
+  },
+  {
+    "from": "processor.hash-join",
+    "to": "processor"
+  },
+  {
+    "from": "processor.order-by",
+    "to": "processor"
+  },
+  {
+    "from": "processor.plan-mapper",
+    "to": "processor"
+  },
+  {
+    "from": "processor.recursive-extend",
+    "to": "processor"
+  },
+  {
+    "from": "processor.result-collection",
+    "to": "processor"
+  },
+  {
+    "from": "processor.scan-operators",
+    "to": "processor"
+  },
+  {
+    "from": "public-api",
+    "to": "iface.cpp-embed-api"
+  },
+  {
+    "from": "storage.buffer-manager",
+    "to": "storage-engine"
+  },
+  {
+    "from": "storage.checkpointer",
+    "to": "storage-engine"
+  },
+  {
+    "from": "storage.column-storage",
+    "to": "storage-engine"
+  },
+  {
+    "from": "storage.compression",
+    "to": "storage-engine"
+  },
+  {
+    "from": "storage.hash-index",
+    "to": "storage-engine"
+  },
+  {
+    "from": "storage.local-storage",
+    "to": "storage-engine"
+  },
+  {
+    "from": "storage.node-rel-tables",
+    "to": "storage-engine"
+  },
+  {
+    "from": "storage.shadow-paging",
+    "to": "storage-engine"
+  },
+  {
+    "from": "storage.statistics",
+    "to": "storage-engine"
+  },
+  {
+    "from": "storage.storage-manager",
+    "to": "storage-engine"
+  },
+  {
+    "from": "storage.wal",
+    "to": "storage-engine"
+  },
+  {
+    "from": "test.component-tests",
+    "to": "test-infrastructure"
+  },
+  {
+    "from": "test.cypher-test-files",
+    "to": "test-infrastructure"
+  },
+  {
+    "from": "test.e2e-runner",
+    "to": "test-infrastructure"
+  },
+  {
+    "from": "test.graph-test-infra",
+    "to": "test-infrastructure"
+  },
+  {
+    "from": "transaction.context",
+    "to": "transaction"
+  },
+  {
+    "from": "transaction.lifecycle",
+    "to": "transaction"
+  },
+  {
+    "from": "transaction.snapshot-isolation",
+    "to": "transaction"
+  },
+  {
+    "from": "transaction.undo-buffer",
+    "to": "transaction"
+  }
 ]

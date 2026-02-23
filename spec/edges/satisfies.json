@@ -1,18 +1,62 @@
 [
-  // test-infrastructure -> Component (Satisfies): test suite validates these components
-  { "from": "test-infrastructure", "to": "parser" },
-  { "from": "test-infrastructure", "to": "binder" },
-  { "from": "test-infrastructure", "to": "planner" },
-  { "from": "test-infrastructure", "to": "optimizer" },
-  { "from": "test-infrastructure", "to": "processor" },
-  { "from": "test-infrastructure", "to": "storage-engine" },
-  { "from": "test-infrastructure", "to": "catalog" },
-  { "from": "test-infrastructure", "to": "transaction" },
-  { "from": "test-infrastructure", "to": "expression-evaluator" },
-  { "from": "test-infrastructure", "to": "function-library" },
-  { "from": "test-infrastructure", "to": "graph-analytics" },
-  { "from": "test-infrastructure", "to": "public-api" },
-  { "from": "test-infrastructure", "to": "c-api" },
-  { "from": "test-infrastructure", "to": "extension-runtime" },
-  { "from": "test-infrastructure", "to": "extensions" }
+  {
+    "from": "test-infrastructure",
+    "to": "binder"
+  },
+  {
+    "from": "test-infrastructure",
+    "to": "c-api"
+  },
+  {
+    "from": "test-infrastructure",
+    "to": "catalog"
+  },
+  {
+    "from": "test-infrastructure",
+    "to": "expression-evaluator"
+  },
+  {
+    "from": "test-infrastructure",
+    "to": "extension-runtime"
+  },
+  {
+    "from": "test-infrastructure",
+    "to": "extensions"
+  },
+  {
+    "from": "test-infrastructure",
+    "to": "function-library"
+  },
+  {
+    "from": "test-infrastructure",
+    "to": "graph-analytics"
+  },
+  {
+    "from": "test-infrastructure",
+    "to": "optimizer"
+  },
+  {
+    "from": "test-infrastructure",
+    "to": "parser"
+  },
+  {
+    "from": "test-infrastructure",
+    "to": "planner"
+  },
+  {
+    "from": "test-infrastructure",
+    "to": "processor"
+  },
+  {
+    "from": "test-infrastructure",
+    "to": "public-api"
+  },
+  {
+    "from": "test-infrastructure",
+    "to": "storage-engine"
+  },
+  {
+    "from": "test-infrastructure",
+    "to": "transaction"
+  }
 ]

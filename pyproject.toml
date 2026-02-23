@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "spec-manager"
+version = "0.1.0"
+description = "Kuzu-backed spec graph management for Claude agents"
+requires-python = ">=3.10"
+dependencies = [
+    "kuzu>=0.5.0",
+    "fastmcp>=3.0",
+]
+
+[project.scripts]
+spec-manager = "spec_manager.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["spec_manager*"]

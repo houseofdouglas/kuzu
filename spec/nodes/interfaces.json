@@ -1,14 +1,26 @@
 [
   {
+    "id": "iface.c-abi",
+    "name": "C ABI",
+    "description": "The flat C-linkage ABI declared in src/include/c_api/kuzu.h: opaque handle types (kuzu_database, kuzu_connection, kuzu_query_result, kuzu_flat_tuple, kuzu_value, kuzu_data_type) and their associated free functions. ABI-stable across compiler versions and linkage models. Directly consumed by the Rust API (via ffi.rs) and Java API (via JNI native methods). Changes here require coordinated updates to all FFI consumers.",
+    "status": "active"
+  },
+  {
+    "id": "iface.cli-shell",
+    "name": "CLI Shell Interface",
+    "description": "The interactive shell user interface provided by tools/shell/: multi-line Cypher query input with Enter-to-execute, dot-commands for configuration (:threads, :timeout, :mode table|csv|json|column, :maxrows, :maxwidth, :stats, :highlight), SIGINT cancellation of in-flight queries, history persistence, and tab completion. The shell is the primary interactive interface for Kuzu users and is also the basis for the shell integration test suite.",
+    "status": "active"
+  },
+  {
     "id": "iface.cpp-embed-api",
     "name": "C++ Embedding API",
     "description": "The stable public C++ embedding interface marked with KUZU_API in src/include/main/: Database (database lifecycle, extension registration, configuration), Connection (query execution, prepare/execute, UDF registration), QueryResult (row iteration, Arrow export, metadata), and PreparedStatement (compiled parameterized query handle). This is the primary interface for C++ applications embedding Kuzu and is the foundation all language bindings wrap. Breaking changes here cascade to all 6 language bindings.",
     "status": "active"
   },
   {
-    "id": "iface.c-abi",
-    "name": "C ABI",
-    "description": "The flat C-linkage ABI declared in src/include/c_api/kuzu.h: opaque handle types (kuzu_database, kuzu_connection, kuzu_query_result, kuzu_flat_tuple, kuzu_value, kuzu_data_type) and their associated free functions. ABI-stable across compiler versions and linkage models. Directly consumed by the Rust API (via ffi.rs) and Java API (via JNI native methods). Changes here require coordinated updates to all FFI consumers.",
+    "id": "iface.cypher-language",
+    "name": "Cypher Query Language",
+    "description": "The Cypher query language interface as implemented by Kuzu: the full openCypher clause set (MATCH, WHERE, RETURN, WITH, UNWIND, CREATE, MERGE, SET, DELETE, OPTIONAL MATCH) plus Kuzu extensions (COPY FROM/TO, LOAD, CALL, ATTACH/DETACH, USE, INSTALL/LOAD EXTENSION, variable-length path semantics WALK/TRAIL/ACYCLIC, SHORTEST path, multi-graph CALL syntax). Users, all language bindings, and all test files write queries against this interface. The grammar file Cypher.g4 is the authoritative specification.",
     "status": "active"
   },
   {
@@ -27,18 +39,6 @@
     "id": "iface.table-function-contract",
     "name": "Table Function Contract",
     "description": "The TableFunction struct interface (in src/include/function/table_function.h) that defines how any component or extension can expose a callable table-valued function to the query engine: a bind function (producing TableFuncBindData and output schema), an init function (shared and local state), an exec function (producing ValueVector batches), and optional progress/finalize/replace-scan callbacks. All CALL statements, LOAD operations, and GDS algorithm outputs are implemented as TableFunctions.",
-    "status": "active"
-  },
-  {
-    "id": "iface.cypher-language",
-    "name": "Cypher Query Language",
-    "description": "The Cypher query language interface as implemented by Kuzu: the full openCypher clause set (MATCH, WHERE, RETURN, WITH, UNWIND, CREATE, MERGE, SET, DELETE, OPTIONAL MATCH) plus Kuzu extensions (COPY FROM/TO, LOAD, CALL, ATTACH/DETACH, USE, INSTALL/LOAD EXTENSION, variable-length path semantics WALK/TRAIL/ACYCLIC, SHORTEST path, multi-graph CALL syntax). Users, all language bindings, and all test files write queries against this interface. The grammar file Cypher.g4 is the authoritative specification.",
-    "status": "active"
-  },
-  {
-    "id": "iface.cli-shell",
-    "name": "CLI Shell Interface",
-    "description": "The interactive shell user interface provided by tools/shell/: multi-line Cypher query input with Enter-to-execute, dot-commands for configuration (:threads, :timeout, :mode table|csv|json|column, :maxrows, :maxwidth, :stats, :highlight), SIGINT cancellation of in-flight queries, history persistence, and tab completion. The shell is the primary interactive interface for Kuzu users and is also the basis for the shell integration test suite.",
     "status": "active"
   }
 ]

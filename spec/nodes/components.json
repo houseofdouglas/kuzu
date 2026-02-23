@@ -1,19 +1,5 @@
 [
   {
-    "id": "common",
-    "name": "Common Utilities",
-    "description": "Cross-cutting foundation library providing shared data types (including all scalar, temporal, nested, and graph-specific types), value representation, vectorized data chunks, null masks, Arrow format interop, filesystem abstraction, task scheduler, serialization/deserialization, exception handling, and miscellaneous utilities used by every other subsystem.",
-    "status": "active",
-    "layer": "infrastructure"
-  },
-  {
-    "id": "parser",
-    "name": "Query Parser",
-    "description": "ANTLR4-based Cypher query parser comprising the Cypher.g4 grammar, a generated lexer/parser, and a transformer that converts raw Cypher query strings into a parsed (unbound) AST of statement and expression nodes.",
-    "status": "active",
-    "layer": "execution"
-  },
-  {
     "id": "binder",
     "name": "Query Binder",
     "description": "Semantic analysis stage that consumes the parsed AST and produces a fully bound AST: resolves names against the catalog, enforces type rules, handles scoping for subqueries and WITH clauses, rewrites syntactic sugar, and rejects semantically invalid queries with descriptive errors.",
@@ -21,32 +7,11 @@
     "layer": "execution"
   },
   {
-    "id": "planner",
-    "name": "Query Planner",
-    "description": "Logical query plan generator that takes a bound AST and produces a tree of logical operators; enumerates candidate join orders using dynamic programming, selects plans based on cardinality estimates, and handles subquery unnesting and multi-part query planning.",
+    "id": "c-api",
+    "name": "C API",
+    "description": "C language binding layer in `src/c_api/` that exposes a flat, ABI-stable C interface over the public C++ API; enables FFI integration from languages that cannot directly consume C++ (Rust, Python ctypes, etc.) and is the substrate for the Rust API binding.",
     "status": "active",
-    "layer": "execution"
-  },
-  {
-    "id": "optimizer",
-    "name": "Query Optimizer",
-    "description": "Logical plan rewriting subsystem that applies a sequence of rule-based and cost-guided optimizer passes including filter push-down, projection push-down, limit push-down, factorization rewriting, hash join acceleration, correlated subquery unnesting, and removal of unnecessary joins.",
-    "status": "active",
-    "layer": "execution"
-  },
-  {
-    "id": "processor",
-    "name": "Query Processor",
-    "description": "Vectorized physical query execution engine that compiles an optimized logical plan into a pipeline of physical operators (scan, hash join, aggregate, order-by, recursive extend, DML insert/delete/set, batch copy, index lookup, cross product, etc.) and executes them using a morsel-driven parallel scheduler.",
-    "status": "active",
-    "layer": "execution"
-  },
-  {
-    "id": "storage-engine",
-    "name": "Storage Engine",
-    "description": "Columnar disk-based storage subsystem providing buffer management, page I/O with shadow-file durability, write-ahead logging (WAL) and checkpointing, column chunk encoding and compression (bitpacking, ALP float, dictionary, RLE), node and relationship table storage, hash and B-tree indices, local (uncommitted) storage for in-progress transactions, and per-table statistics.",
-    "status": "active",
-    "layer": "storage"
+    "layer": "api"
   },
   {
     "id": "catalog",
@@ -56,11 +21,11 @@
     "layer": "catalog"
   },
   {
-    "id": "transaction",
-    "name": "Transaction Manager",
-    "description": "ACID transaction lifecycle subsystem managing transaction creation, commit, rollback, and concurrency control; maintains per-transaction undo buffers for write visibility, coordinates with the storage engine's WAL for durability, and enforces snapshot isolation semantics.",
+    "id": "common",
+    "name": "Common Utilities",
+    "description": "Cross-cutting foundation library providing shared data types (including all scalar, temporal, nested, and graph-specific types), value representation, vectorized data chunks, null masks, Arrow format interop, filesystem abstraction, task scheduler, serialization/deserialization, exception handling, and miscellaneous utilities used by every other subsystem.",
     "status": "active",
-    "layer": "catalog"
+    "layer": "infrastructure"
   },
   {
     "id": "expression-evaluator",
@@ -68,34 +33,6 @@
     "description": "Vectorized expression evaluation layer that executes bound expression trees against columnar data chunks at runtime; supports scalar function evaluation, literal constants, column references, CASE expressions, lambda expressions, list/path/pattern comprehensions, and expression tree compilation.",
     "status": "active",
     "layer": "execution"
-  },
-  {
-    "id": "function-library",
-    "name": "Function Library",
-    "description": "Registry and implementation of all built-in scalar, aggregate, and table functions: arithmetic, comparison, string, date/timestamp/interval, cast, list, map, struct, union, blob, UUID, hash, path, sequence, and null functions; also includes the function resolution and overload dispatch mechanism.",
-    "status": "active",
-    "layer": "execution"
-  },
-  {
-    "id": "graph-analytics",
-    "name": "Graph Analytics",
-    "description": "Graph data model abstractions and generalized data science (GDS) algorithm runtime: defines graph entry sets and on-disk graph representations used as algorithm inputs, and implements GDS table functions (shortest path, PageRank, BFS, community detection, etc.) that execute over those graph representations.",
-    "status": "active",
-    "layer": "execution"
-  },
-  {
-    "id": "public-api",
-    "name": "Public C++ API",
-    "description": "User-facing C++ API surface (the `kuzu` namespace in `src/main/`) providing the Database, Connection, PreparedStatement, QueryResult, and QuerySummary classes; the stable entry point for embedding Kuzu in C++ applications and the foundation that all language bindings wrap.",
-    "status": "active",
-    "layer": "api"
-  },
-  {
-    "id": "c-api",
-    "name": "C API",
-    "description": "C language binding layer in `src/c_api/` that exposes a flat, ABI-stable C interface over the public C++ API; enables FFI integration from languages that cannot directly consume C++ (Rust, Python ctypes, etc.) and is the substrate for the Rust API binding.",
-    "status": "active",
-    "layer": "api"
   },
   {
     "id": "extension-runtime",
@@ -112,6 +49,20 @@
     "layer": "extension"
   },
   {
+    "id": "function-library",
+    "name": "Function Library",
+    "description": "Registry and implementation of all built-in scalar, aggregate, and table functions: arithmetic, comparison, string, date/timestamp/interval, cast, list, map, struct, union, blob, UUID, hash, path, sequence, and null functions; also includes the function resolution and overload dispatch mechanism.",
+    "status": "active",
+    "layer": "execution"
+  },
+  {
+    "id": "graph-analytics",
+    "name": "Graph Analytics",
+    "description": "Graph data model abstractions and generalized data science (GDS) algorithm runtime: defines graph entry sets and on-disk graph representations used as algorithm inputs, and implements GDS table functions (shortest path, PageRank, BFS, community detection, etc.) that execute over those graph representations.",
+    "status": "active",
+    "layer": "execution"
+  },
+  {
     "id": "language-bindings",
     "name": "Language Bindings",
     "description": "Language-specific client wrappers and the interactive CLI shell: Python API (pybind11, `tools/python_api/`), Java API (JNI, `tools/java_api/`), Node.js API (native addon, `tools/nodejs_api/`), Rust API (FFI crate over C API, `tools/rust_api/`), WebAssembly build (Emscripten, `tools/wasm/`), and the interactive Cypher shell with linenoise (`tools/shell/`).",
@@ -119,10 +70,59 @@
     "layer": "binding"
   },
   {
+    "id": "optimizer",
+    "name": "Query Optimizer",
+    "description": "Logical plan rewriting subsystem that applies a sequence of rule-based and cost-guided optimizer passes including filter push-down, projection push-down, limit push-down, factorization rewriting, hash join acceleration, correlated subquery unnesting, and removal of unnecessary joins.",
+    "status": "active",
+    "layer": "execution"
+  },
+  {
+    "id": "parser",
+    "name": "Query Parser",
+    "description": "ANTLR4-based Cypher query parser comprising the Cypher.g4 grammar, a generated lexer/parser, and a transformer that converts raw Cypher query strings into a parsed (unbound) AST of statement and expression nodes.",
+    "status": "active",
+    "layer": "execution"
+  },
+  {
+    "id": "planner",
+    "name": "Query Planner",
+    "description": "Logical query plan generator that takes a bound AST and produces a tree of logical operators; enumerates candidate join orders using dynamic programming, selects plans based on cardinality estimates, and handles subquery unnesting and multi-part query planning.",
+    "status": "active",
+    "layer": "execution"
+  },
+  {
+    "id": "processor",
+    "name": "Query Processor",
+    "description": "Vectorized physical query execution engine that compiles an optimized logical plan into a pipeline of physical operators (scan, hash join, aggregate, order-by, recursive extend, DML insert/delete/set, batch copy, index lookup, cross product, etc.) and executes them using a morsel-driven parallel scheduler.",
+    "status": "active",
+    "layer": "execution"
+  },
+  {
+    "id": "public-api",
+    "name": "Public C++ API",
+    "description": "User-facing C++ API surface (the `kuzu` namespace in `src/main/`) providing the Database, Connection, PreparedStatement, QueryResult, and QuerySummary classes; the stable entry point for embedding Kuzu in C++ applications and the foundation that all language bindings wrap.",
+    "status": "active",
+    "layer": "api"
+  },
+  {
+    "id": "storage-engine",
+    "name": "Storage Engine",
+    "description": "Columnar disk-based storage subsystem providing buffer management, page I/O with shadow-file durability, write-ahead logging (WAL) and checkpointing, column chunk encoding and compression (bitpacking, ALP float, dictionary, RLE), node and relationship table storage, hash and B-tree indices, local (uncommitted) storage for in-progress transactions, and per-table statistics.",
+    "status": "active",
+    "layer": "storage"
+  },
+  {
     "id": "test-infrastructure",
     "name": "Test Infrastructure",
     "description": "Google Test-based testing framework and test corpus: a test runner that parses and executes `.cypher` end-to-end test files against expected answers, component-level C++ unit test suites for storage/transaction/binder/planner/optimizer, API-level tests, copy/import tests, and shared test helper utilities; provides the executable specification of system correctness.",
     "status": "active",
     "layer": "infrastructure"
+  },
+  {
+    "id": "transaction",
+    "name": "Transaction Manager",
+    "description": "ACID transaction lifecycle subsystem managing transaction creation, commit, rollback, and concurrency control; maintains per-transaction undo buffers for write visibility, coordinates with the storage engine's WAL for durability, and enforces snapshot isolation semantics.",
+    "status": "active",
+    "layer": "catalog"
   }
 ]

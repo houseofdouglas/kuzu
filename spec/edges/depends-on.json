@@ -1,340 +1,1092 @@
 [
-  // ── Feature -> Feature (intra-subsystem) ────────────────────────────────
-
-  // common: value-vector needs type-system and null-mask
-  { "from": "common.value-vector",   "to": "common.type-system",  "strength": "required" },
-  { "from": "common.value-vector",   "to": "common.null-mask",    "strength": "required" },
-
-  // common: task-scheduler references processor.ExecutionContext (cross-subsystem — noted in L3)
-  // common: arrow-interop depends on value-vector and type-system
-  { "from": "common.arrow-interop",  "to": "common.value-vector", "strength": "required" },
-  { "from": "common.arrow-interop",  "to": "common.type-system",  "strength": "required" },
-
-  // storage: buffer-manager depends on common type primitives (via types.h)
-  { "from": "storage.buffer-manager",   "to": "common.type-system",    "strength": "required" },
-
-  // storage: WAL depends on serializer and filesystem
-  { "from": "storage.wal",              "to": "common.serializer",     "strength": "required" },
-  { "from": "storage.wal",              "to": "common.filesystem",     "strength": "required" },
-
-  // storage: column storage depends on buffer-manager (pins/unpins pages), compression, null-mask, value-vector
-  { "from": "storage.column-storage",   "to": "storage.buffer-manager",  "strength": "required" },
-  { "from": "storage.column-storage",   "to": "storage.compression",     "strength": "required" },
-  { "from": "storage.column-storage",   "to": "common.value-vector",     "strength": "required" },
-  { "from": "storage.column-storage",   "to": "common.null-mask",        "strength": "required" },
-
-  // storage: hash-index depends on buffer-manager, serializer, type-system
-  { "from": "storage.hash-index",       "to": "storage.buffer-manager",  "strength": "required" },
-  { "from": "storage.hash-index",       "to": "common.serializer",       "strength": "required" },
-  { "from": "storage.hash-index",       "to": "common.type-system",      "strength": "required" },
-
-  // storage: node-rel-tables depend on column storage and hash-index
-  { "from": "storage.node-rel-tables",  "to": "storage.column-storage",  "strength": "required" },
-  { "from": "storage.node-rel-tables",  "to": "storage.hash-index",      "strength": "required" },
-  { "from": "storage.node-rel-tables",  "to": "storage.local-storage",   "strength": "required" },
-
-  // storage: local-storage depends on column-storage for merging during scan
-  { "from": "storage.local-storage",    "to": "storage.column-storage",  "strength": "required" },
-
-  // storage: statistics depends on type-system and value-vector
-  { "from": "storage.statistics",       "to": "common.type-system",      "strength": "required" },
-  { "from": "storage.statistics",       "to": "common.value-vector",     "strength": "required" },
-
-  // storage: checkpointer depends on WAL, shadow-paging, column-storage
-  { "from": "storage.checkpointer",     "to": "storage.wal",             "strength": "required" },
-  { "from": "storage.checkpointer",     "to": "storage.shadow-paging",   "strength": "required" },
-  { "from": "storage.checkpointer",     "to": "storage.column-storage",  "strength": "required" },
-
-  // storage: shadow-paging depends on filesystem
-  { "from": "storage.shadow-paging",    "to": "common.filesystem",       "strength": "required" },
-
-  // storage: storage-manager owns everything
-  { "from": "storage.storage-manager",  "to": "storage.buffer-manager",  "strength": "required" },
-  { "from": "storage.storage-manager",  "to": "storage.wal",             "strength": "required" },
-  { "from": "storage.storage-manager",  "to": "storage.node-rel-tables", "strength": "required" },
-  { "from": "storage.storage-manager",  "to": "storage.hash-index",      "strength": "required" },
-
-  // catalog: schema-registry depends on transaction for MVCC reads and binder types
-  { "from": "catalog.schema-registry",  "to": "catalog.catalog-entries", "strength": "required" },
-  { "from": "catalog.schema-registry",  "to": "catalog.mvcc-visibility", "strength": "required" },
-  { "from": "catalog.mvcc-visibility",  "to": "catalog.catalog-entries", "strength": "required" },
-
-  // catalog: catalog-entries depend on serializer for persistence
-  { "from": "catalog.catalog-entries",  "to": "common.serializer",       "strength": "required" },
-  { "from": "catalog.catalog-entries",  "to": "common.type-system",      "strength": "required" },
-
-  // transaction: lifecycle depends on WAL for durability
-  { "from": "transaction.lifecycle",         "to": "storage.wal",                  "strength": "required" },
-  { "from": "transaction.lifecycle",         "to": "storage.local-storage",        "strength": "required" },
-  { "from": "transaction.lifecycle",         "to": "transaction.undo-buffer",      "strength": "required" },
-  { "from": "transaction.lifecycle",         "to": "storage.checkpointer",         "strength": "optional" },
-
-  // transaction: undo-buffer depends on catalog MVCC and storage version chains
-  { "from": "transaction.undo-buffer",       "to": "catalog.mvcc-visibility",      "strength": "required" },
-  { "from": "transaction.undo-buffer",       "to": "storage.column-storage",       "strength": "required" },
-
-  // transaction: snapshot-isolation depends on transaction lifecycle for timestamps
-  { "from": "transaction.snapshot-isolation","to": "transaction.lifecycle",        "strength": "required" },
-  { "from": "transaction.snapshot-isolation","to": "storage.column-storage",       "strength": "required" },
-
-  // transaction: context depends on lifecycle
-  { "from": "transaction.context",           "to": "transaction.lifecycle",        "strength": "required" },
-
-  // parser: transformer depends on grammar and AST nodes
-  { "from": "parser.transformer",   "to": "parser.cypher-grammar",  "strength": "required" },
-  { "from": "parser.transformer",   "to": "parser.ast-nodes",       "strength": "required" },
-
-  // parser: entry-point depends on transformer
-  { "from": "parser.entry-point",   "to": "parser.transformer",     "strength": "required" },
-  { "from": "parser.entry-point",   "to": "parser.ast-nodes",       "strength": "required" },
-
-  // ── Component -> Component (cross-subsystem) ─────────────────────────────
-
-  // storage-engine depends on common for types, value-vector, filesystem, serializer
-  { "from": "storage-engine",  "to": "common",       "strength": "required" },
-
-  // catalog depends on common (serializer, types) and transaction (for MVCC reads)
-  { "from": "catalog",         "to": "common",       "strength": "required" },
-  { "from": "catalog",         "to": "transaction",  "strength": "required" },
-
-  // transaction depends on storage-engine (WAL, local-storage, checkpointer) and common
-  { "from": "transaction",     "to": "storage-engine", "strength": "required" },
-  { "from": "transaction",     "to": "common",          "strength": "required" },
-
-  // parser depends on common (types, exceptions) only — deliberately no catalog/storage deps
-  { "from": "parser",          "to": "common",       "strength": "required" },
-
-  // ── binder feature-level dependencies ────────────────────────────────────
-  // expression-binder depends on parser AST nodes (input) and bound-ast (output)
-  { "from": "binder.expression-binder", "to": "parser.ast-nodes",         "strength": "required" },
-  { "from": "binder.expression-binder", "to": "binder.bound-ast",         "strength": "required" },
-  // statement-binder orchestrates expression-binder, ddl-binding, query-graph
-  { "from": "binder.statement-binder",  "to": "binder.expression-binder", "strength": "required" },
-  { "from": "binder.statement-binder",  "to": "binder.ddl-binding",       "strength": "required" },
-  { "from": "binder.statement-binder",  "to": "binder.query-graph",       "strength": "required" },
-  { "from": "binder.statement-binder",  "to": "parser.ast-nodes",         "strength": "required" },
-  { "from": "binder.statement-binder",  "to": "catalog.schema-registry",  "strength": "required" },
-  { "from": "binder.ddl-binding",       "to": "catalog.schema-registry",  "strength": "required" },
-
-  // ── planner feature-level dependencies ───────────────────────────────────
-  { "from": "planner.join-order",         "to": "planner.logical-operators", "strength": "required" },
-  { "from": "planner.join-order",         "to": "binder.query-graph",        "strength": "required" },
-  { "from": "planner.join-order",         "to": "storage.statistics",        "strength": "required" },
-  { "from": "planner.subquery-planning",  "to": "planner.logical-operators", "strength": "required" },
-  { "from": "planner.subquery-planning",  "to": "planner.join-order",        "strength": "required" },
-
-  // ── optimizer feature-level dependencies ─────────────────────────────────
-  { "from": "optimizer.filter-pushdown",   "to": "planner.logical-operators", "strength": "required" },
-  { "from": "optimizer.factorization",     "to": "planner.logical-operators", "strength": "required" },
-  { "from": "optimizer.join-acceleration", "to": "planner.logical-operators", "strength": "required" },
-  { "from": "optimizer.limit-topk",        "to": "planner.logical-operators", "strength": "required" },
-
-  // ── evaluator feature-level dependencies ─────────────────────────────────
-  { "from": "evaluator.function-evaluator",  "to": "common.value-vector",       "strength": "required" },
-  { "from": "evaluator.function-evaluator",  "to": "function.scalar-functions",  "strength": "required" },
-  { "from": "evaluator.literal-reference",   "to": "common.value-vector",        "strength": "required" },
-  { "from": "evaluator.complex-evaluators",  "to": "common.value-vector",        "strength": "required" },
-  { "from": "evaluator.expression-mapper",   "to": "binder.bound-ast",           "strength": "required" },
-  { "from": "evaluator.expression-mapper",   "to": "evaluator.function-evaluator","strength": "required" },
-  { "from": "evaluator.expression-mapper",   "to": "evaluator.literal-reference", "strength": "required" },
-  { "from": "evaluator.expression-mapper",   "to": "evaluator.complex-evaluators","strength": "required" },
-
-  // ── function library feature-level dependencies ───────────────────────────
-  { "from": "function.scalar-functions",    "to": "common.value-vector",       "strength": "required" },
-  { "from": "function.scalar-functions",    "to": "common.type-system",        "strength": "required" },
-  { "from": "function.aggregate-functions", "to": "common.value-vector",       "strength": "required" },
-  { "from": "function.table-functions",     "to": "common.value-vector",       "strength": "required" },
-  { "from": "function.cast-functions",      "to": "common.type-system",        "strength": "required" },
-  { "from": "function.function-registry",   "to": "function.scalar-functions",  "strength": "required" },
-  { "from": "function.function-registry",   "to": "function.aggregate-functions","strength": "required" },
-  { "from": "function.function-registry",   "to": "function.table-functions",   "strength": "required" },
-
-  // ── graph-analytics feature-level dependencies ────────────────────────────
-  { "from": "gds.algorithms",         "to": "gds.graph-model",          "strength": "required" },
-  { "from": "gds.algorithms",         "to": "gds.frontier-execution",   "strength": "required" },
-  { "from": "gds.frontier-execution", "to": "gds.graph-model",          "strength": "required" },
-  { "from": "gds.frontier-execution", "to": "common.task-scheduler",    "strength": "required" },
-  { "from": "gds.graph-model",        "to": "storage.node-rel-tables",  "strength": "required" },
-  { "from": "gds.algorithms",         "to": "function.table-functions", "strength": "required" },
-
-  // ── processor feature-level dependencies ──────────────────────────────────
-  { "from": "processor.plan-mapper",       "to": "planner.logical-operators",    "strength": "required" },
-  { "from": "processor.plan-mapper",       "to": "evaluator.expression-mapper",  "strength": "required" },
-  { "from": "processor.scan-operators",    "to": "storage.node-rel-tables",      "strength": "required" },
-  { "from": "processor.scan-operators",    "to": "common.value-vector",          "strength": "required" },
-  { "from": "processor.hash-join",         "to": "processor.result-collection",  "strength": "required" },
-  { "from": "processor.hash-join",         "to": "common.value-vector",          "strength": "required" },
-  { "from": "processor.aggregate",         "to": "function.aggregate-functions", "strength": "required" },
-  { "from": "processor.aggregate",         "to": "processor.result-collection",  "strength": "required" },
-  { "from": "processor.dml-operators",     "to": "storage.node-rel-tables",      "strength": "required" },
-  { "from": "processor.dml-operators",     "to": "storage.local-storage",        "strength": "required" },
-  { "from": "processor.dml-operators",     "to": "evaluator.expression-mapper",  "strength": "required" },
-  { "from": "processor.ddl-operators",     "to": "catalog.schema-registry",      "strength": "required" },
-  { "from": "processor.ddl-operators",     "to": "storage.storage-manager",      "strength": "required" },
-  { "from": "processor.result-collection", "to": "storage.buffer-manager",       "strength": "required" },
-  { "from": "processor.result-collection", "to": "common.value-vector",          "strength": "required" },
-  { "from": "processor.recursive-extend",  "to": "storage.node-rel-tables",      "strength": "required" },
-  { "from": "processor.order-by",          "to": "processor.result-collection",  "strength": "required" },
-
-  // ── extension-runtime feature-level dependencies ───────────────────────────
-  { "from": "ext-runtime.loader",            "to": "common.filesystem",           "strength": "required" },
-  { "from": "ext-runtime.installer",         "to": "common.filesystem",           "strength": "required" },
-  { "from": "ext-runtime.catalog-extension", "to": "catalog.schema-registry",     "strength": "required" },
-  { "from": "ext-runtime.extension-points",  "to": "binder.statement-binder",     "strength": "optional" },
-  { "from": "ext-runtime.extension-points",  "to": "parser.entry-point",          "strength": "optional" },
-  { "from": "ext-runtime.extension-points",  "to": "planner.logical-operators",   "strength": "optional" },
-  { "from": "ext-runtime.extension-points",  "to": "processor.plan-mapper",       "strength": "optional" },
-
-  // ── extensions feature-level dependencies ─────────────────────────────────
-  { "from": "ext.algo",                    "to": "gds.frontier-execution",        "strength": "required" },
-  { "from": "ext.algo",                    "to": "function.table-functions",      "strength": "required" },
-  { "from": "ext.fts",                     "to": "storage.node-rel-tables",       "strength": "required" },
-  { "from": "ext.fts",                     "to": "function.table-functions",      "strength": "required" },
-  { "from": "ext.vector",                  "to": "storage.node-rel-tables",       "strength": "required" },
-  { "from": "ext.vector",                  "to": "function.table-functions",      "strength": "required" },
-  { "from": "ext.external-db-connectors",  "to": "function.table-functions",      "strength": "required" },
-  { "from": "ext.external-db-connectors",  "to": "ext-runtime.extension-points",  "strength": "required" },
-  { "from": "ext.cloud-format-connectors", "to": "common.filesystem",             "strength": "required" },
-  { "from": "ext.cloud-format-connectors", "to": "function.table-functions",      "strength": "required" },
-
-  // ── public-api feature-level dependencies ─────────────────────────────────
-  { "from": "api.database",          "to": "storage.storage-manager",     "strength": "required" },
-  { "from": "api.database",          "to": "catalog.schema-registry",     "strength": "required" },
-  { "from": "api.database",          "to": "transaction.lifecycle",       "strength": "required" },
-  { "from": "api.database",          "to": "ext-runtime.loader",          "strength": "required" },
-  { "from": "api.connection",        "to": "api.database",                "strength": "required" },
-  { "from": "api.connection",        "to": "api.client-context",          "strength": "required" },
-  { "from": "api.connection",        "to": "transaction.context",         "strength": "required" },
-  { "from": "api.client-context",    "to": "api.database",                "strength": "required" },
-  { "from": "api.client-context",    "to": "storage.storage-manager",     "strength": "required" },
-  { "from": "api.client-context",    "to": "catalog.schema-registry",     "strength": "required" },
-  { "from": "api.client-context",    "to": "transaction.context",         "strength": "required" },
-  { "from": "api.client-context",    "to": "common.task-scheduler",       "strength": "required" },
-  { "from": "api.query-result",      "to": "processor.result-collection", "strength": "required" },
-  { "from": "api.prepared-statement","to": "processor.plan-mapper",       "strength": "required" },
-
-  // ── c-api feature-level dependencies ──────────────────────────────────────
-  { "from": "c-api.bindings",  "to": "api.database",    "strength": "required" },
-  { "from": "c-api.bindings",  "to": "api.connection",  "strength": "required" },
-  { "from": "c-api.bindings",  "to": "api.query-result","strength": "required" },
-
-  // ── language-binding feature-level dependencies ────────────────────────────
-  { "from": "binding.python",  "to": "api.connection",   "strength": "required" },
-  { "from": "binding.python",  "to": "api.query-result", "strength": "required" },
-  { "from": "binding.java",    "to": "c-api.bindings",   "strength": "required" },
-  { "from": "binding.nodejs",  "to": "api.connection",   "strength": "required" },
-  { "from": "binding.nodejs",  "to": "api.query-result", "strength": "required" },
-  { "from": "binding.rust",    "to": "c-api.bindings",   "strength": "required" },
-  { "from": "binding.wasm",    "to": "api.connection",   "strength": "required" },
-  { "from": "binding.shell",   "to": "api.connection",   "strength": "required" },
-  { "from": "binding.shell",   "to": "api.query-result", "strength": "required" },
-
-  // ── test feature-level dependencies ───────────────────────────────────────
-  { "from": "test.e2e-runner",        "to": "api.connection",         "strength": "required" },
-  { "from": "test.e2e-runner",        "to": "test.cypher-test-files", "strength": "required" },
-  { "from": "test.e2e-runner",        "to": "test.graph-test-infra",  "strength": "required" },
-  { "from": "test.component-tests",   "to": "test.graph-test-infra",  "strength": "required" },
-  { "from": "test.graph-test-infra",  "to": "api.database",           "strength": "required" },
-  { "from": "test.graph-test-infra",  "to": "api.connection",         "strength": "required" },
-
-  // ── Component -> Component (batch 2 cross-subsystem) ─────────────────────
-  { "from": "binder",           "to": "parser",          "strength": "required" },
-  { "from": "binder",           "to": "catalog",         "strength": "required" },
-  { "from": "binder",           "to": "common",          "strength": "required" },
-  { "from": "binder",           "to": "function-library","strength": "required" },
-
-  { "from": "planner",          "to": "binder",          "strength": "required" },
-  { "from": "planner",          "to": "storage-engine",  "strength": "required" },
-  { "from": "planner",          "to": "common",          "strength": "required" },
-
-  { "from": "optimizer",        "to": "planner",         "strength": "required" },
-  { "from": "optimizer",        "to": "common",          "strength": "required" },
-
-  { "from": "expression-evaluator", "to": "binder",         "strength": "required" },
-  { "from": "expression-evaluator", "to": "function-library","strength": "required" },
-  { "from": "expression-evaluator", "to": "common",          "strength": "required" },
-
-  { "from": "function-library", "to": "common",          "strength": "required" },
-  { "from": "function-library", "to": "binder",          "strength": "required" },
-
-  { "from": "graph-analytics",  "to": "storage-engine",  "strength": "required" },
-  { "from": "graph-analytics",  "to": "catalog",         "strength": "required" },
-  { "from": "graph-analytics",  "to": "function-library","strength": "required" },
-  { "from": "graph-analytics",  "to": "common",          "strength": "required" },
-
-  { "from": "processor",        "to": "planner",         "strength": "required" },
-  { "from": "processor",        "to": "optimizer",       "strength": "required" },
-  { "from": "processor",        "to": "storage-engine",  "strength": "required" },
-  { "from": "processor",        "to": "catalog",         "strength": "required" },
-  { "from": "processor",        "to": "transaction",     "strength": "required" },
-  { "from": "processor",        "to": "expression-evaluator","strength": "required" },
-  { "from": "processor",        "to": "function-library","strength": "required" },
-  { "from": "processor",        "to": "common",          "strength": "required" },
-
-  { "from": "extension-runtime","to": "catalog",         "strength": "required" },
-  { "from": "extension-runtime","to": "common",          "strength": "required" },
-  { "from": "extension-runtime","to": "public-api",      "strength": "required" },
-
-  { "from": "extensions",       "to": "extension-runtime","strength": "required" },
-  { "from": "extensions",       "to": "function-library", "strength": "required" },
-  { "from": "extensions",       "to": "storage-engine",   "strength": "required" },
-
-  { "from": "public-api",       "to": "processor",       "strength": "required" },
-  { "from": "public-api",       "to": "storage-engine",  "strength": "required" },
-  { "from": "public-api",       "to": "catalog",         "strength": "required" },
-  { "from": "public-api",       "to": "transaction",     "strength": "required" },
-  { "from": "public-api",       "to": "extension-runtime","strength": "required" },
-  { "from": "public-api",       "to": "common",          "strength": "required" },
-
-  { "from": "c-api",            "to": "public-api",      "strength": "required" },
-
-  { "from": "language-bindings","to": "public-api",      "strength": "required" },
-  { "from": "language-bindings","to": "c-api",           "strength": "optional" },
-
-  { "from": "test-infrastructure","to": "public-api",    "strength": "required" },
-  { "from": "test-infrastructure","to": "common",        "strength": "required" },
-
-  // ── Layer 3: Cross-subsystem additions (confirmed by header analysis) ─────
-
-  // A. Pipeline flow gaps
-  // optimizer rewrites plans containing binder expression nodes (factorization_rewriter.cpp
-  // includes binder/expression/literal_expression.h, property_expression.h, etc.)
-  { "from": "optimizer",        "to": "binder",               "strength": "required" },
-  // processor plan_mapper and map/*.cpp directly include binder expression types
-  { "from": "processor",        "to": "binder",               "strength": "required" },
-
-  // B. graph-analytics missing links
-  // on_disk_graph.cpp includes expression_evaluator/expression_evaluator.h
-  { "from": "graph-analytics",  "to": "expression-evaluator", "strength": "required" },
-  // gds.h includes binder/expression/node_expression.h
-  { "from": "graph-analytics",  "to": "binder",               "strength": "required" },
-  // on_disk_graph.cpp includes planner/operator/schema.h; gds.cpp includes planner/planner.h
-  { "from": "graph-analytics",  "to": "planner",              "strength": "required" },
-  // gds.h includes processor/result/factorized_table_pool.h; gds.cpp includes plan_mapper.h
-  { "from": "graph-analytics",  "to": "processor",            "strength": "required" },
-
-  // C. public-api full pipeline wiring (client_context.cpp includes all pipeline headers)
-  { "from": "public-api",       "to": "parser",               "strength": "required" },
-  { "from": "public-api",       "to": "binder",               "strength": "required" },
-  { "from": "public-api",       "to": "planner",              "strength": "required" },
-  { "from": "public-api",       "to": "optimizer",            "strength": "required" },
-
-  // D. extensions -> graph-analytics (algo extension uses GDS frontier framework)
-  { "from": "extensions",       "to": "graph-analytics",      "strength": "optional" },
-
-  // E. Feature->Feature cross-subsystem edges
-  // task_scheduler.h includes processor/execution_context.h
-  { "from": "common.task-scheduler",     "to": "processor.plan-mapper",       "strength": "required" },
-  // on_disk_graph uses expression evaluator for predicate push-down
-  { "from": "gds.graph-model",           "to": "evaluator.expression-mapper", "strength": "required" },
-  // gds.cpp includes planner types for sub-plan construction
-  { "from": "gds.algorithms",            "to": "planner.logical-operators",   "strength": "required" },
-  // plan_mapper.h and map/*.cpp consume binder::Expression and bound statement nodes
-  { "from": "processor.plan-mapper",     "to": "binder.bound-ast",            "strength": "required" },
-  // filter_push_down + factorization_rewriter include binder expression headers
-  { "from": "optimizer.filter-pushdown", "to": "binder.bound-ast",            "strength": "required" },
-  // ClientContext calls Parser::parse() and feeds output to Binder
-  { "from": "api.client-context",        "to": "parser.entry-point",          "strength": "required" },
-  // algo extension algorithms operate on the on-disk graph model abstraction
-  { "from": "ext.algo",                  "to": "gds.graph-model",             "strength": "required" }
+  {
+    "from": "api.client-context",
+    "to": "api.database",
+    "strength": "required"
+  },
+  {
+    "from": "api.client-context",
+    "to": "catalog.schema-registry",
+    "strength": "required"
+  },
+  {
+    "from": "api.client-context",
+    "to": "common.task-scheduler",
+    "strength": "required"
+  },
+  {
+    "from": "api.client-context",
+    "to": "parser.entry-point",
+    "strength": "required"
+  },
+  {
+    "from": "api.client-context",
+    "to": "storage.storage-manager",
+    "strength": "required"
+  },
+  {
+    "from": "api.client-context",
+    "to": "transaction.context",
+    "strength": "required"
+  },
+  {
+    "from": "api.connection",
+    "to": "api.client-context",
+    "strength": "required"
+  },
+  {
+    "from": "api.connection",
+    "to": "api.database",
+    "strength": "required"
+  },
+  {
+    "from": "api.connection",
+    "to": "transaction.context",
+    "strength": "required"
+  },
+  {
+    "from": "api.database",
+    "to": "catalog.schema-registry",
+    "strength": "required"
+  },
+  {
+    "from": "api.database",
+    "to": "ext-runtime.loader",
+    "strength": "required"
+  },
+  {
+    "from": "api.database",
+    "to": "storage.storage-manager",
+    "strength": "required"
+  },
+  {
+    "from": "api.database",
+    "to": "transaction.lifecycle",
+    "strength": "required"
+  },
+  {
+    "from": "api.prepared-statement",
+    "to": "processor.plan-mapper",
+    "strength": "required"
+  },
+  {
+    "from": "api.query-result",
+    "to": "processor.result-collection",
+    "strength": "required"
+  },
+  {
+    "from": "binder",
+    "to": "catalog",
+    "strength": "required"
+  },
+  {
+    "from": "binder",
+    "to": "common",
+    "strength": "required"
+  },
+  {
+    "from": "binder",
+    "to": "function-library",
+    "strength": "required"
+  },
+  {
+    "from": "binder",
+    "to": "parser",
+    "strength": "required"
+  },
+  {
+    "from": "binder.ddl-binding",
+    "to": "catalog.schema-registry",
+    "strength": "required"
+  },
+  {
+    "from": "binder.expression-binder",
+    "to": "binder.bound-ast",
+    "strength": "required"
+  },
+  {
+    "from": "binder.expression-binder",
+    "to": "parser.ast-nodes",
+    "strength": "required"
+  },
+  {
+    "from": "binder.statement-binder",
+    "to": "binder.ddl-binding",
+    "strength": "required"
+  },
+  {
+    "from": "binder.statement-binder",
+    "to": "binder.expression-binder",
+    "strength": "required"
+  },
+  {
+    "from": "binder.statement-binder",
+    "to": "binder.query-graph",
+    "strength": "required"
+  },
+  {
+    "from": "binder.statement-binder",
+    "to": "catalog.schema-registry",
+    "strength": "required"
+  },
+  {
+    "from": "binder.statement-binder",
+    "to": "parser.ast-nodes",
+    "strength": "required"
+  },
+  {
+    "from": "binding.java",
+    "to": "c-api.bindings",
+    "strength": "required"
+  },
+  {
+    "from": "binding.nodejs",
+    "to": "api.connection",
+    "strength": "required"
+  },
+  {
+    "from": "binding.nodejs",
+    "to": "api.query-result",
+    "strength": "required"
+  },
+  {
+    "from": "binding.python",
+    "to": "api.connection",
+    "strength": "required"
+  },
+  {
+    "from": "binding.python",
+    "to": "api.query-result",
+    "strength": "required"
+  },
+  {
+    "from": "binding.rust",
+    "to": "c-api.bindings",
+    "strength": "required"
+  },
+  {
+    "from": "binding.shell",
+    "to": "api.connection",
+    "strength": "required"
+  },
+  {
+    "from": "binding.shell",
+    "to": "api.query-result",
+    "strength": "required"
+  },
+  {
+    "from": "binding.wasm",
+    "to": "api.connection",
+    "strength": "required"
+  },
+  {
+    "from": "c-api",
+    "to": "public-api",
+    "strength": "required"
+  },
+  {
+    "from": "c-api.bindings",
+    "to": "api.connection",
+    "strength": "required"
+  },
+  {
+    "from": "c-api.bindings",
+    "to": "api.database",
+    "strength": "required"
+  },
+  {
+    "from": "c-api.bindings",
+    "to": "api.query-result",
+    "strength": "required"
+  },
+  {
+    "from": "catalog",
+    "to": "common",
+    "strength": "required"
+  },
+  {
+    "from": "catalog",
+    "to": "transaction",
+    "strength": "required"
+  },
+  {
+    "from": "catalog.catalog-entries",
+    "to": "common.serializer",
+    "strength": "required"
+  },
+  {
+    "from": "catalog.catalog-entries",
+    "to": "common.type-system",
+    "strength": "required"
+  },
+  {
+    "from": "catalog.mvcc-visibility",
+    "to": "catalog.catalog-entries",
+    "strength": "required"
+  },
+  {
+    "from": "catalog.schema-registry",
+    "to": "catalog.catalog-entries",
+    "strength": "required"
+  },
+  {
+    "from": "catalog.schema-registry",
+    "to": "catalog.mvcc-visibility",
+    "strength": "required"
+  },
+  {
+    "from": "common.arrow-interop",
+    "to": "common.type-system",
+    "strength": "required"
+  },
+  {
+    "from": "common.arrow-interop",
+    "to": "common.value-vector",
+    "strength": "required"
+  },
+  {
+    "from": "common.task-scheduler",
+    "to": "processor.plan-mapper",
+    "strength": "required"
+  },
+  {
+    "from": "common.value-vector",
+    "to": "common.null-mask",
+    "strength": "required"
+  },
+  {
+    "from": "common.value-vector",
+    "to": "common.type-system",
+    "strength": "required"
+  },
+  {
+    "from": "evaluator.complex-evaluators",
+    "to": "common.value-vector",
+    "strength": "required"
+  },
+  {
+    "from": "evaluator.expression-mapper",
+    "to": "binder.bound-ast",
+    "strength": "required"
+  },
+  {
+    "from": "evaluator.expression-mapper",
+    "to": "evaluator.complex-evaluators",
+    "strength": "required"
+  },
+  {
+    "from": "evaluator.expression-mapper",
+    "to": "evaluator.function-evaluator",
+    "strength": "required"
+  },
+  {
+    "from": "evaluator.expression-mapper",
+    "to": "evaluator.literal-reference",
+    "strength": "required"
+  },
+  {
+    "from": "evaluator.function-evaluator",
+    "to": "common.value-vector",
+    "strength": "required"
+  },
+  {
+    "from": "evaluator.function-evaluator",
+    "to": "function.scalar-functions",
+    "strength": "required"
+  },
+  {
+    "from": "evaluator.literal-reference",
+    "to": "common.value-vector",
+    "strength": "required"
+  },
+  {
+    "from": "expression-evaluator",
+    "to": "binder",
+    "strength": "required"
+  },
+  {
+    "from": "expression-evaluator",
+    "to": "common",
+    "strength": "required"
+  },
+  {
+    "from": "expression-evaluator",
+    "to": "function-library",
+    "strength": "required"
+  },
+  {
+    "from": "ext-runtime.catalog-extension",
+    "to": "catalog.schema-registry",
+    "strength": "required"
+  },
+  {
+    "from": "ext-runtime.extension-points",
+    "to": "binder.statement-binder",
+    "strength": "optional"
+  },
+  {
+    "from": "ext-runtime.extension-points",
+    "to": "parser.entry-point",
+    "strength": "optional"
+  },
+  {
+    "from": "ext-runtime.extension-points",
+    "to": "planner.logical-operators",
+    "strength": "optional"
+  },
+  {
+    "from": "ext-runtime.extension-points",
+    "to": "processor.plan-mapper",
+    "strength": "optional"
+  },
+  {
+    "from": "ext-runtime.installer",
+    "to": "common.filesystem",
+    "strength": "required"
+  },
+  {
+    "from": "ext-runtime.loader",
+    "to": "common.filesystem",
+    "strength": "required"
+  },
+  {
+    "from": "ext.algo",
+    "to": "function.table-functions",
+    "strength": "required"
+  },
+  {
+    "from": "ext.algo",
+    "to": "gds.frontier-execution",
+    "strength": "required"
+  },
+  {
+    "from": "ext.algo",
+    "to": "gds.graph-model",
+    "strength": "required"
+  },
+  {
+    "from": "ext.cloud-format-connectors",
+    "to": "common.filesystem",
+    "strength": "required"
+  },
+  {
+    "from": "ext.cloud-format-connectors",
+    "to": "function.table-functions",
+    "strength": "required"
+  },
+  {
+    "from": "ext.external-db-connectors",
+    "to": "ext-runtime.extension-points",
+    "strength": "required"
+  },
+  {
+    "from": "ext.external-db-connectors",
+    "to": "function.table-functions",
+    "strength": "required"
+  },
+  {
+    "from": "ext.fts",
+    "to": "function.table-functions",
+    "strength": "required"
+  },
+  {
+    "from": "ext.fts",
+    "to": "storage.node-rel-tables",
+    "strength": "required"
+  },
+  {
+    "from": "ext.vector",
+    "to": "function.table-functions",
+    "strength": "required"
+  },
+  {
+    "from": "ext.vector",
+    "to": "storage.node-rel-tables",
+    "strength": "required"
+  },
+  {
+    "from": "extension-runtime",
+    "to": "catalog",
+    "strength": "required"
+  },
+  {
+    "from": "extension-runtime",
+    "to": "common",
+    "strength": "required"
+  },
+  {
+    "from": "extension-runtime",
+    "to": "public-api",
+    "strength": "required"
+  },
+  {
+    "from": "extensions",
+    "to": "extension-runtime",
+    "strength": "required"
+  },
+  {
+    "from": "extensions",
+    "to": "function-library",
+    "strength": "required"
+  },
+  {
+    "from": "extensions",
+    "to": "graph-analytics",
+    "strength": "optional"
+  },
+  {
+    "from": "extensions",
+    "to": "storage-engine",
+    "strength": "required"
+  },
+  {
+    "from": "function-library",
+    "to": "binder",
+    "strength": "required"
+  },
+  {
+    "from": "function-library",
+    "to": "common",
+    "strength": "required"
+  },
+  {
+    "from": "function.aggregate-functions",
+    "to": "common.value-vector",
+    "strength": "required"
+  },
+  {
+    "from": "function.cast-functions",
+    "to": "common.type-system",
+    "strength": "required"
+  },
+  {
+    "from": "function.function-registry",
+    "to": "function.aggregate-functions",
+    "strength": "required"
+  },
+  {
+    "from": "function.function-registry",
+    "to": "function.scalar-functions",
+    "strength": "required"
+  },
+  {
+    "from": "function.function-registry",
+    "to": "function.table-functions",
+    "strength": "required"
+  },
+  {
+    "from": "function.scalar-functions",
+    "to": "common.type-system",
+    "strength": "required"
+  },
+  {
+    "from": "function.scalar-functions",
+    "to": "common.value-vector",
+    "strength": "required"
+  },
+  {
+    "from": "function.table-functions",
+    "to": "common.value-vector",
+    "strength": "required"
+  },
+  {
+    "from": "gds.algorithms",
+    "to": "function.table-functions",
+    "strength": "required"
+  },
+  {
+    "from": "gds.algorithms",
+    "to": "gds.frontier-execution",
+    "strength": "required"
+  },
+  {
+    "from": "gds.algorithms",
+    "to": "gds.graph-model",
+    "strength": "required"
+  },
+  {
+    "from": "gds.algorithms",
+    "to": "planner.logical-operators",
+    "strength": "required"
+  },
+  {
+    "from": "gds.frontier-execution",
+    "to": "common.task-scheduler",
+    "strength": "required"
+  },
+  {
+    "from": "gds.frontier-execution",
+    "to": "gds.graph-model",
+    "strength": "required"
+  },
+  {
+    "from": "gds.graph-model",
+    "to": "evaluator.expression-mapper",
+    "strength": "required"
+  },
+  {
+    "from": "gds.graph-model",
+    "to": "storage.node-rel-tables",
+    "strength": "required"
+  },
+  {
+    "from": "graph-analytics",
+    "to": "binder",
+    "strength": "required"
+  },
+  {
+    "from": "graph-analytics",
+    "to": "catalog",
+    "strength": "required"
+  },
+  {
+    "from": "graph-analytics",
+    "to": "common",
+    "strength": "required"
+  },
+  {
+    "from": "graph-analytics",
+    "to": "expression-evaluator",
+    "strength": "required"
+  },
+  {
+    "from": "graph-analytics",
+    "to": "function-library",
+    "strength": "required"
+  },
+  {
+    "from": "graph-analytics",
+    "to": "planner",
+    "strength": "required"
+  },
+  {
+    "from": "graph-analytics",
+    "to": "processor",
+    "strength": "required"
+  },
+  {
+    "from": "graph-analytics",
+    "to": "storage-engine",
+    "strength": "required"
+  },
+  {
+    "from": "language-bindings",
+    "to": "c-api",
+    "strength": "optional"
+  },
+  {
+    "from": "language-bindings",
+    "to": "public-api",
+    "strength": "required"
+  },
+  {
+    "from": "optimizer",
+    "to": "binder",
+    "strength": "required"
+  },
+  {
+    "from": "optimizer",
+    "to": "common",
+    "strength": "required"
+  },
+  {
+    "from": "optimizer",
+    "to": "planner",
+    "strength": "required"
+  },
+  {
+    "from": "optimizer.factorization",
+    "to": "planner.logical-operators",
+    "strength": "required"
+  },
+  {
+    "from": "optimizer.filter-pushdown",
+    "to": "binder.bound-ast",
+    "strength": "required"
+  },
+  {
+    "from": "optimizer.filter-pushdown",
+    "to": "planner.logical-operators",
+    "strength": "required"
+  },
+  {
+    "from": "optimizer.join-acceleration",
+    "to": "planner.logical-operators",
+    "strength": "required"
+  },
+  {
+    "from": "optimizer.limit-topk",
+    "to": "planner.logical-operators",
+    "strength": "required"
+  },
+  {
+    "from": "parser",
+    "to": "common",
+    "strength": "required"
+  },
+  {
+    "from": "parser.entry-point",
+    "to": "parser.ast-nodes",
+    "strength": "required"
+  },
+  {
+    "from": "parser.entry-point",
+    "to": "parser.transformer",
+    "strength": "required"
+  },
+  {
+    "from": "parser.transformer",
+    "to": "parser.ast-nodes",
+    "strength": "required"
+  },
+  {
+    "from": "parser.transformer",
+    "to": "parser.cypher-grammar",
+    "strength": "required"
+  },
+  {
+    "from": "planner",
+    "to": "binder",
+    "strength": "required"
+  },
+  {
+    "from": "planner",
+    "to": "common",
+    "strength": "required"
+  },
+  {
+    "from": "planner",
+    "to": "storage-engine",
+    "strength": "required"
+  },
+  {
+    "from": "planner.join-order",
+    "to": "binder.query-graph",
+    "strength": "required"
+  },
+  {
+    "from": "planner.join-order",
+    "to": "planner.logical-operators",
+    "strength": "required"
+  },
+  {
+    "from": "planner.join-order",
+    "to": "storage.statistics",
+    "strength": "required"
+  },
+  {
+    "from": "planner.subquery-planning",
+    "to": "planner.join-order",
+    "strength": "required"
+  },
+  {
+    "from": "planner.subquery-planning",
+    "to": "planner.logical-operators",
+    "strength": "required"
+  },
+  {
+    "from": "processor",
+    "to": "binder",
+    "strength": "required"
+  },
+  {
+    "from": "processor",
+    "to": "catalog",
+    "strength": "required"
+  },
+  {
+    "from": "processor",
+    "to": "common",
+    "strength": "required"
+  },
+  {
+    "from": "processor",
+    "to": "expression-evaluator",
+    "strength": "required"
+  },
+  {
+    "from": "processor",
+    "to": "function-library",
+    "strength": "required"
+  },
+  {
+    "from": "processor",
+    "to": "optimizer",
+    "strength": "required"
+  },
+  {
+    "from": "processor",
+    "to": "planner",
+    "strength": "required"
+  },
+  {
+    "from": "processor",
+    "to": "storage-engine",
+    "strength": "required"
+  },
+  {
+    "from": "processor",
+    "to": "transaction",
+    "strength": "required"
+  },
+  {
+    "from": "processor.aggregate",
+    "to": "function.aggregate-functions",
+    "strength": "required"
+  },
+  {
+    "from": "processor.aggregate",
+    "to": "processor.result-collection",
+    "strength": "required"
+  },
+  {
+    "from": "processor.ddl-operators",
+    "to": "catalog.schema-registry",
+    "strength": "required"
+  },
+  {
+    "from": "processor.ddl-operators",
+    "to": "storage.storage-manager",
+    "strength": "required"
+  },
+  {
+    "from": "processor.dml-operators",
+    "to": "evaluator.expression-mapper",
+    "strength": "required"
+  },
+  {
+    "from": "processor.dml-operators",
+    "to": "storage.local-storage",
+    "strength": "required"
+  },
+  {
+    "from": "processor.dml-operators",
+    "to": "storage.node-rel-tables",
+    "strength": "required"
+  },
+  {
+    "from": "processor.hash-join",
+    "to": "common.value-vector",
+    "strength": "required"
+  },
+  {
+    "from": "processor.hash-join",
+    "to": "processor.result-collection",
+    "strength": "required"
+  },
+  {
+    "from": "processor.order-by",
+    "to": "processor.result-collection",
+    "strength": "required"
+  },
+  {
+    "from": "processor.plan-mapper",
+    "to": "binder.bound-ast",
+    "strength": "required"
+  },
+  {
+    "from": "processor.plan-mapper",
+    "to": "evaluator.expression-mapper",
+    "strength": "required"
+  },
+  {
+    "from": "processor.plan-mapper",
+    "to": "planner.logical-operators",
+    "strength": "required"
+  },
+  {
+    "from": "processor.recursive-extend",
+    "to": "storage.node-rel-tables",
+    "strength": "required"
+  },
+  {
+    "from": "processor.result-collection",
+    "to": "common.value-vector",
+    "strength": "required"
+  },
+  {
+    "from": "processor.result-collection",
+    "to": "storage.buffer-manager",
+    "strength": "required"
+  },
+  {
+    "from": "processor.scan-operators",
+    "to": "common.value-vector",
+    "strength": "required"
+  },
+  {
+    "from": "processor.scan-operators",
+    "to": "storage.node-rel-tables",
+    "strength": "required"
+  },
+  {
+    "from": "public-api",
+    "to": "binder",
+    "strength": "required"
+  },
+  {
+    "from": "public-api",
+    "to": "catalog",
+    "strength": "required"
+  },
+  {
+    "from": "public-api",
+    "to": "common",
+    "strength": "required"
+  },
+  {
+    "from": "public-api",
+    "to": "extension-runtime",
+    "strength": "required"
+  },
+  {
+    "from": "public-api",
+    "to": "optimizer",
+    "strength": "required"
+  },
+  {
+    "from": "public-api",
+    "to": "parser",
+    "strength": "required"
+  },
+  {
+    "from": "public-api",
+    "to": "planner",
+    "strength": "required"
+  },
+  {
+    "from": "public-api",
+    "to": "processor",
+    "strength": "required"
+  },
+  {
+    "from": "public-api",
+    "to": "storage-engine",
+    "strength": "required"
+  },
+  {
+    "from": "public-api",
+    "to": "transaction",
+    "strength": "required"
+  },
+  {
+    "from": "storage-engine",
+    "to": "common",
+    "strength": "required"
+  },
+  {
+    "from": "storage.buffer-manager",
+    "to": "common.type-system",
+    "strength": "required"
+  },
+  {
+    "from": "storage.checkpointer",
+    "to": "storage.column-storage",
+    "strength": "required"
+  },
+  {
+    "from": "storage.checkpointer",
+    "to": "storage.shadow-paging",
+    "strength": "required"
+  },
+  {
+    "from": "storage.checkpointer",
+    "to": "storage.wal",
+    "strength": "required"
+  },
+  {
+    "from": "storage.column-storage",
+    "to": "common.null-mask",
+    "strength": "required"
+  },
+  {
+    "from": "storage.column-storage",
+    "to": "common.value-vector",
+    "strength": "required"
+  },
+  {
+    "from": "storage.column-storage",
+    "to": "storage.buffer-manager",
+    "strength": "required"
+  },
+  {
+    "from": "storage.column-storage",
+    "to": "storage.compression",
+    "strength": "required"
+  },
+  {
+    "from": "storage.hash-index",
+    "to": "common.serializer",
+    "strength": "required"
+  },
+  {
+    "from": "storage.hash-index",
+    "to": "common.type-system",
+    "strength": "required"
+  },
+  {
+    "from": "storage.hash-index",
+    "to": "storage.buffer-manager",
+    "strength": "required"
+  },
+  {
+    "from": "storage.local-storage",
+    "to": "storage.column-storage",
+    "strength": "required"
+  },
+  {
+    "from": "storage.node-rel-tables",
+    "to": "storage.column-storage",
+    "strength": "required"
+  },
+  {
+    "from": "storage.node-rel-tables",
+    "to": "storage.hash-index",
+    "strength": "required"
+  },
+  {
+    "from": "storage.node-rel-tables",
+    "to": "storage.local-storage",
+    "strength": "required"
+  },
+  {
+    "from": "storage.shadow-paging",
+    "to": "common.filesystem",
+    "strength": "required"
+  },
+  {
+    "from": "storage.statistics",
+    "to": "common.type-system",
+    "strength": "required"
+  },
+  {
+    "from": "storage.statistics",
+    "to": "common.value-vector",
+    "strength": "required"
+  },
+  {
+    "from": "storage.storage-manager",
+    "to": "storage.buffer-manager",
+    "strength": "required"
+  },
+  {
+    "from": "storage.storage-manager",
+    "to": "storage.hash-index",
+    "strength": "required"
+  },
+  {
+    "from": "storage.storage-manager",
+    "to": "storage.node-rel-tables",
+    "strength": "required"
+  },
+  {
+    "from": "storage.storage-manager",
+    "to": "storage.wal",
+    "strength": "required"
+  },
+  {
+    "from": "storage.wal",
+    "to": "common.filesystem",
+    "strength": "required"
+  },
+  {
+    "from": "storage.wal",
+    "to": "common.serializer",
+    "strength": "required"
+  },
+  {
+    "from": "test-infrastructure",
+    "to": "common",
+    "strength": "required"
+  },
+  {
+    "from": "test-infrastructure",
+    "to": "public-api",
+    "strength": "required"
+  },
+  {
+    "from": "test.component-tests",
+    "to": "test.graph-test-infra",
+    "strength": "required"
+  },
+  {
+    "from": "test.e2e-runner",
+    "to": "api.connection",
+    "strength": "required"
+  },
+  {
+    "from": "test.e2e-runner",
+    "to": "test.cypher-test-files",
+    "strength": "required"
+  },
+  {
+    "from": "test.e2e-runner",
+    "to": "test.graph-test-infra",
+    "strength": "required"
+  },
+  {
+    "from": "test.graph-test-infra",
+    "to": "api.connection",
+    "strength": "required"
+  },
+  {
+    "from": "test.graph-test-infra",
+    "to": "api.database",
+    "strength": "required"
+  },
+  {
+    "from": "transaction",
+    "to": "common",
+    "strength": "required"
+  },
+  {
+    "from": "transaction",
+    "to": "storage-engine",
+    "strength": "required"
+  },
+  {
+    "from": "transaction.context",
+    "to": "transaction.lifecycle",
+    "strength": "required"
+  },
+  {
+    "from": "transaction.lifecycle",
+    "to": "storage.checkpointer",
+    "strength": "optional"
+  },
+  {
+    "from": "transaction.lifecycle",
+    "to": "storage.local-storage",
+    "strength": "required"
+  },
+  {
+    "from": "transaction.lifecycle",
+    "to": "storage.wal",
+    "strength": "required"
+  },
+  {
+    "from": "transaction.lifecycle",
+    "to": "transaction.undo-buffer",
+    "strength": "required"
+  },
+  {
+    "from": "transaction.snapshot-isolation",
+    "to": "storage.column-storage",
+    "strength": "required"
+  },
+  {
+    "from": "transaction.snapshot-isolation",
+    "to": "transaction.lifecycle",
+    "strength": "required"
+  },
+  {
+    "from": "transaction.undo-buffer",
+    "to": "catalog.mvcc-visibility",
+    "strength": "required"
+  },
+  {
+    "from": "transaction.undo-buffer",
+    "to": "storage.column-storage",
+    "strength": "required"
+  }
 ]

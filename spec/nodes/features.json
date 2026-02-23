@@ -1,186 +1,34 @@
 [
   {
-    "id": "common.type-system",
-    "name": "Type System",
-    "description": "The complete set of logical and physical data types used throughout the engine: scalar types (bool, integers, floats, strings, blobs, UUID, dates, timestamps, intervals), composite types (list, map, struct, union, array), and graph-specific types (NODE, REL, RECURSIVE_REL, PATH, INTERNAL_ID). Defined in LogicalType and its sub-types; all other subsystems depend on this vocabulary.",
+    "id": "api.client-context",
+    "name": "Client Context",
+    "description": "ClientContext is the per-connection runtime context aggregating all subsystem handles needed during query execution: pointers to Database, StorageManager, Catalog, TransactionManager, TransactionContext, QueryProcessor, TaskScheduler, ExtensionManager, GraphEntrySet, ProgressBar, active query interrupt flag, and all per-connection configuration settings. Acts as the dependency-injection hub for the entire query pipeline.",
     "status": "active"
   },
   {
-    "id": "common.value-vector",
-    "name": "Value Vector",
-    "description": "The columnar batch data structure (ValueVector and DataChunk) that represents a fixed-capacity batch of typed values during query execution. ValueVector holds a typed array plus a NullMask and a DataChunkState selector; DataChunk groups multiple ValueVectors sharing the same selection state. The fundamental unit passed between physical operators.",
+    "id": "api.connection",
+    "name": "Connection Class",
+    "description": "main::Connection represents a single client session against a Database. It exposes query(), prepare(), execute(), and async variants; manages per-connection settings (thread count, timeout, progress bar); owns a ClientContext that aggregates all per-connection state; and exposes UDF registration (registerVectorizedFunction). Thread-safe for concurrent execution from different threads.",
     "status": "active"
   },
   {
-    "id": "common.task-scheduler",
-    "name": "Task Scheduler",
-    "description": "Multi-threaded work-stealing task execution engine (TaskScheduler, Task) that drives parallel query execution. Maintains a FIFO queue of tasks, assigns worker threads, and propagates exceptions back to the calling thread. Used by the Query Processor to parallelize pipeline execution across morsels.",
+    "id": "api.database",
+    "name": "Database Class",
+    "description": "The main::Database class is the top-level entry point for embedding Kuzu. It owns the SystemConfig, StorageManager, Catalog, TransactionManager, QueryProcessor, ExtensionManager, DatabaseManager (for attached databases), and the VirtualFileSystem. Opening a Database path initializes or recovers the database file. The Database is thread-safe; multiple Connections share one Database.",
     "status": "active"
   },
   {
-    "id": "common.filesystem",
-    "name": "Virtual File System",
-    "description": "Pluggable filesystem abstraction (FileSystem, VirtualFileSystem) that allows the engine and extensions to register multiple filesystem implementations (local, gzip-compressed, HTTP, S3, Azure) and dispatch open/read/write/glob calls to the correct backend. LocalFileSystem provides the default on-disk implementation.",
+    "id": "api.prepared-statement",
+    "name": "Prepared Statement",
+    "description": "PreparedStatement holds a compiled and optimized physical plan for a parameterized query, enabling repeated execution without re-parsing or re-planning. It stores the bound parameter types and names, compilation status, the physical plan, and optional query summary. Prepared statements are created via Connection::prepare() and executed via Connection::execute().",
     "status": "active"
   },
   {
-    "id": "common.serializer",
-    "name": "Serialization Framework",
-    "description": "Binary serialization and deserialization utilities (Serializer, Deserializer, BufferedFileWriter, BufferReader) used to persist catalog metadata, WAL records, column chunk metadata, and other durable structures. Supports primitive values, strings, vectors, maps, and optional pointers with a pluggable Writer/Reader backend.",
+    "id": "api.query-result",
+    "name": "Query Result",
+    "description": "QueryResult is the returned object from query execution. It exposes isSuccess(), getErrorMessage(), hasNext(), getNext() (returning FlatTuple for row-at-a-time iteration), getColumnNames/Types(), toString() for debug display, toArrow() for Arrow RecordBatch export, and getQuerySummary() for timing and plan statistics. FlatTupleQueryResult and ArrowQueryResult are the two concrete implementations.",
     "status": "active"
   },
-  {
-    "id": "common.exceptions",
-    "name": "Exception Hierarchy",
-    "description": "Typed C++ exception hierarchy covering all engine error domains: BinderException, CatalogException, ConnectionException, ConversionException, CopyException, IOException, InternalException, InterruptException, NotImplementedException, OverflowException, ParserException, RuntimeException, StorageException, TransactionManagerException. Enables callers to distinguish and handle error categories.",
-    "status": "active"
-  },
-  {
-    "id": "common.arrow-interop",
-    "name": "Apache Arrow Interop",
-    "description": "Bidirectional conversion between Kuzu ValueVectors/types and the Apache Arrow columnar format. Enables zero-copy or near-zero-copy export of query results to Arrow RecordBatches and import of Arrow data during COPY operations and external scans.",
-    "status": "active"
-  },
-  {
-    "id": "common.null-mask",
-    "name": "Null Mask",
-    "description": "Bit-packed null tracking for ValueVectors (NullMask) with SIMD-accelerated bulk set/test operations and a no-nulls fast path. Also includes the roaring-bitmap-backed SemiMask used for semi-join filtering during scan operations.",
-    "status": "active"
-  },
-  {
-    "id": "storage.buffer-manager",
-    "name": "Buffer Manager",
-    "description": "Clock-sweep page cache (BufferManager + MemoryManager) that maps database file pages into memory frames, manages eviction under a configurable memory budget, and provides pinned frame access to all storage readers and writers. Also exposes a malloc-backed MemoryManager for allocating in-memory-only buffers used by operators.",
-    "status": "active"
-  },
-  {
-    "id": "storage.wal",
-    "name": "Write-Ahead Log",
-    "description": "Durability subsystem comprising a shared WAL and per-transaction LocalWAL. On commit, each transaction's LocalWAL entries are flushed to the shared WAL file. The WAL replayer recovers committed but not-yet-checkpointed writes on startup. Checksum validation guards record integrity.",
-    "status": "active"
-  },
-  {
-    "id": "storage.shadow-paging",
-    "name": "Shadow Paging",
-    "description": "Atomic page-replacement durability mechanism (ShadowFile, ShadowUtils) used during checkpointing: modified pages are written to a shadow file then atomically swapped into the main data file, avoiding partial-write corruption without requiring per-record WAL entries for bulk data changes.",
-    "status": "active"
-  },
-  {
-    "id": "storage.column-storage",
-    "name": "Column Storage",
-    "description": "Columnar persistent storage layer for node and relationship tables. Column data is organized into NodeGroups of fixed capacity, each holding one ColumnChunk per column. Supports typed column implementations (StringColumn, ListColumn, StructColumn, DictionaryColumn, NullColumn) and a unified scan/insert/update/delete state machine.",
-    "status": "active"
-  },
-  {
-    "id": "storage.compression",
-    "name": "Column Compression",
-    "description": "Per-column compression algorithms applied at flush time: bitpacking (integer columns, with uint128 support), ALP (Adaptive Lossless floating-Point for float/double columns), dictionary encoding (for strings and repeated values), run-length encoding, and an uncompressed fallback. Compression selection is automatic based on column data statistics.",
-    "status": "active"
-  },
-  {
-    "id": "storage.node-rel-tables",
-    "name": "Node and Relationship Table Storage",
-    "description": "High-level table storage API (Table, NodeTable, RelTable) that layers transaction-aware CRUD operations over the column storage substrate. NodeTable owns a primary-key hash index and manages node offsets. RelTable manages forward and backward CSR adjacency lists in RelTableData. Both tables integrate with LocalStorage for uncommitted write visibility.",
-    "status": "active"
-  },
-  {
-    "id": "storage.hash-index",
-    "name": "Hash Index",
-    "description": "On-disk and in-memory hash index (OnDiskHashIndex, HashIndex<T>, InMemHashIndex<T>) used as the primary key index for node tables. Supports point lookups, inserts, and bulk loading. A LocalHashIndex buffers uncommitted inserts during transactions. The index header and slot structures are persisted in the DiskArrayCollection.",
-    "status": "active"
-  },
-  {
-    "id": "storage.local-storage",
-    "name": "Local Transaction Storage",
-    "description": "Per-transaction write buffer (LocalStorage, LocalNodeTable, LocalRelTable) that accumulates uncommitted inserts, updates, and deletes in memory. Scan operations merge committed column storage with local changes to provide correct read-your-own-writes semantics. On commit, local changes are flushed to shared column storage and the WAL.",
-    "status": "active"
-  },
-  {
-    "id": "storage.statistics",
-    "name": "Table and Column Statistics",
-    "description": "Per-table cardinality estimates and per-column statistics (TableStats, ColumnStats) maintained incrementally during inserts and updated at checkpoint. Includes a HyperLogLog estimator for distinct value counts. Statistics are consumed by the Query Planner for join order selection.",
-    "status": "active"
-  },
-  {
-    "id": "storage.checkpointer",
-    "name": "Checkpointer",
-    "description": "Coordinated checkpoint process (Checkpointer) that atomically promotes in-memory column group changes to the durable main data file, serializes the catalog and database header, writes a checkpoint WAL record, and applies shadow pages. Triggered automatically when WAL size exceeds a configurable threshold or explicitly by a CHECKPOINT statement.",
-    "status": "active"
-  },
-  {
-    "id": "storage.storage-manager",
-    "name": "Storage Manager",
-    "description": "Top-level storage coordinator (StorageManager) that owns the data FileHandle, MemoryManager, WAL, ShadowFile, and the map of all Table instances. Provides create/drop table DDL operations called by the processor DDL executor, and the recover() entry point used at database startup.",
-    "status": "active"
-  },
-  {
-    "id": "catalog.schema-registry",
-    "name": "Schema Registry",
-    "description": "The Catalog class is the top-level schema registry holding CatalogSets for node tables, relationship tables, types, functions, scalar macros, and sequences. Provides transaction-aware lookup and mutation operations used by the binder, planner, DDL executor, and storage manager.",
-    "status": "active"
-  },
-  {
-    "id": "catalog.catalog-entries",
-    "name": "Catalog Entry Types",
-    "description": "The hierarchy of typed CatalogEntry subclasses representing schema objects: NodeTableCatalogEntry, RelGroupCatalogEntry, TypeCatalogEntry, FunctionCatalogEntry, ScalarMacroCatalogEntry, SequenceCatalogEntry, IndexCatalogEntry. Each entry is serializable, versioned for MVCC visibility, and carries its property definitions.",
-    "status": "active"
-  },
-  {
-    "id": "catalog.mvcc-visibility",
-    "name": "Catalog MVCC Versioning",
-    "description": "CatalogSet implements multi-version concurrency control for schema objects via an MVCC entry chain: each DDL mutation creates a new CatalogEntry version linked to the previous. Transaction-aware getEntry() returns the version visible to the reading transaction snapshot, allowing concurrent DDL and DML without full schema locking.",
-    "status": "active"
-  },
-  {
-    "id": "transaction.lifecycle",
-    "name": "Transaction Lifecycle Management",
-    "description": "TransactionManager coordinates the full transaction lifecycle: beginTransaction (assigns a monotonically increasing transaction ID and timestamp), commit (flushes LocalWAL to WAL, triggers auto-checkpoint if threshold exceeded), and rollback (reverts local storage and undo buffer changes). Enforces single active write transaction at a time.",
-    "status": "active"
-  },
-  {
-    "id": "transaction.undo-buffer",
-    "name": "Undo Buffer",
-    "description": "Per-transaction UndoBuffer that records before-images for catalog mutations and storage version records. On rollback, the undo buffer is replayed in reverse to restore catalog entries and storage version chains to their pre-transaction state. Tightly coupled to CatalogSet and VersionInfo in column storage.",
-    "status": "active"
-  },
-  {
-    "id": "transaction.context",
-    "name": "Transaction Context",
-    "description": "TransactionContext is the connection-level transaction state machine managing AUTO_COMMIT vs. MANUAL transaction modes. It wraps the active Transaction object per connection, delegates begin/commit/rollback to TransactionManager, and owns the LocalCacheManager for connection-scoped cached objects.",
-    "status": "active"
-  },
-  {
-    "id": "transaction.snapshot-isolation",
-    "name": "Snapshot Isolation",
-    "description": "Each Transaction carries a read timestamp serving as its consistent snapshot marker. Storage version chains (VersionInfo, UpdateInfo) record which transaction ID wrote each version, and scan operations use the transaction snapshot timestamp to skip versions not visible at snapshot time, implementing snapshot isolation.",
-    "status": "active"
-  },
-  {
-    "id": "parser.cypher-grammar",
-    "name": "Cypher Grammar",
-    "description": "The ANTLR4 grammar file (Cypher.g4) defining the complete Cypher query language supported by Kuzu, including standard openCypher clauses (MATCH, WHERE, RETURN, WITH, UNWIND, CREATE, MERGE, SET, DELETE) and Kuzu extensions (COPY, LOAD, CALL, ATTACH, DETACH, USE, INSTALL EXTENSION).",
-    "status": "active"
-  },
-  {
-    "id": "parser.ast-nodes",
-    "name": "Parsed AST Node Types",
-    "description": "The hierarchy of parsed (unbound) AST node types produced by the transformer: Statement subclasses (RegularQuery, CreateTable, Drop, Alter, CopyFrom, CopyTo, StandaloneCall, etc.) and ParsedExpression subclasses (ParsedFunctionExpression, ParsedLiteralExpression, ParsedVariableExpression, ParsedSubqueryExpression, ParsedCaseExpression, etc.).",
-    "status": "active"
-  },
-  {
-    "id": "parser.transformer",
-    "name": "Parse Tree Transformer",
-    "description": "The Transformer class that walks the ANTLR4 concrete syntax tree produced by the generated KuzuCypherParser and converts it into the engine typed parsed AST node hierarchy. This is the bridge between the generated ANTLR4 code and the engine AST representation.",
-    "status": "active"
-  },
-  {
-    "id": "parser.entry-point",
-    "name": "Parser Entry Point",
-    "description": "The Parser::parseQuery() static method, the single public entry point for query parsing. Takes a Cypher string and an optional list of TransformerExtensions, invokes the ANTLR4 lexer/parser, runs the transformer, and returns a vector of Statement objects. Extensions can hook into the transform phase to handle custom syntax.",
-    "status": "active"
-  },
-
-  // ── binder ──────────────────────────────────────────────────────────────
   {
     "id": "binder.bound-ast",
     "name": "Bound AST Node Types",
@@ -188,9 +36,9 @@
     "status": "active"
   },
   {
-    "id": "binder.statement-binder",
-    "name": "Statement Binder",
-    "description": "The Binder class that coordinates semantic analysis of all statement types: dispatches DDL, DML (INSERT, MERGE, SET, DELETE), COPY, query, and standalone-call statements to their respective bind methods; resolves table and function names against the Catalog using the active Transaction; and applies BinderExtensions for custom statement types registered by extensions.",
+    "id": "binder.ddl-binding",
+    "name": "DDL Binding",
+    "description": "Binding logic for schema DDL statements: CREATE/DROP/ALTER TABLE, CREATE SEQUENCE, CREATE TYPE, ATTACH/DETACH DATABASE, INSTALL/LOAD EXTENSION. Validates names, property types, primary keys, and constraint rules against the catalog, and produces BoundCreateTableInfo and related info structs consumed by the DDL executor.",
     "status": "active"
   },
   {
@@ -206,295 +54,9 @@
     "status": "active"
   },
   {
-    "id": "binder.ddl-binding",
-    "name": "DDL Binding",
-    "description": "Binding logic for schema DDL statements: CREATE/DROP/ALTER TABLE, CREATE SEQUENCE, CREATE TYPE, ATTACH/DETACH DATABASE, INSTALL/LOAD EXTENSION. Validates names, property types, primary keys, and constraint rules against the catalog, and produces BoundCreateTableInfo and related info structs consumed by the DDL executor.",
-    "status": "active"
-  },
-
-  // ── planner ──────────────────────────────────────────────────────────────
-  {
-    "id": "planner.logical-operators",
-    "name": "Logical Operator Tree",
-    "description": "The complete set of logical operator node types (LogicalOperator subclasses) that form the engine logical plan: LogicalScan, LogicalExtend, LogicalHashJoin, LogicalIntersect, LogicalFilter, LogicalProjection, LogicalAggregate, LogicalOrderBy, LogicalLimit, LogicalInsert, LogicalDelete, LogicalCopyFrom, LogicalCopyTo, and others. Each operator carries schema information and is traversed by the optimizer.",
-    "status": "active"
-  },
-  {
-    "id": "planner.join-order",
-    "name": "Join Order Enumerator",
-    "description": "Dynamic-programming join order enumeration (JoinPlanSolver, JoinTreeConstructor, CardinalityEstimator) that considers all valid orderings of node and relationship scans in a query graph, estimates intermediate result sizes using table statistics, and selects the lowest-estimated-cost plan. Supports bushy join trees and semi-masking (SIP) optimizations.",
-    "status": "active"
-  },
-  {
-    "id": "planner.subquery-planning",
-    "name": "Subquery and Multi-Part Planning",
-    "description": "Planning logic for correlated and uncorrelated subqueries, UNION/UNION ALL, and multi-part queries connected by WITH and RETURN clauses. Handles subquery unnesting decisions and maintains a SubplansTable that caches candidate logical plans per subset of query graph nodes.",
-    "status": "active"
-  },
-
-  // ── optimizer ────────────────────────────────────────────────────────────
-  {
-    "id": "optimizer.filter-pushdown",
-    "name": "Filter and Projection Push-down",
-    "description": "FilterPushDownOptimizer and ProjectionPushDownOptimizer traverse the logical plan tree and push filter predicates and projection lists as deep as possible toward leaf scans, eliminating unnecessary rows and columns early and reducing data volume processed by upper operators.",
-    "status": "active"
-  },
-  {
-    "id": "optimizer.factorization",
-    "name": "Factorization Rewriting",
-    "description": "FactorizationRewriter and RemoveFactorizationRewriter manage the factorized representation of intermediate results: FactorizationRewriter inserts Flatten operators to convert factorized flat/unflat vector batches where needed; RemoveFactorizationRewriter eliminates redundant flattening after other rewrites.",
-    "status": "active"
-  },
-  {
-    "id": "optimizer.join-acceleration",
-    "name": "Join Acceleration Optimizers",
-    "description": "A suite of join-specific optimizer passes: AccHashJoinOptimizer rewrites hash joins to use semi-masking index probes (SIP) where a small probe side allows a pre-filter; RemoveUnnecessaryJoinOptimizer eliminates joins whose output is provably unused; AggKeyDependencyOptimizer removes redundant group-by keys inferred from functional dependencies.",
-    "status": "active"
-  },
-  {
-    "id": "optimizer.limit-topk",
-    "name": "Limit and TopK Push-down",
-    "description": "LimitPushDownOptimizer pushes LIMIT operators closer to scans to enable early termination. TopKOptimizer rewrites ORDER BY + LIMIT into a single TopK operator that maintains a bounded priority queue, avoiding full sort for top-N queries.",
-    "status": "active"
-  },
-
-  // ── expression-evaluator ─────────────────────────────────────────────────
-  {
-    "id": "evaluator.function-evaluator",
-    "name": "Function Evaluator",
-    "description": "FunctionEvaluator executes a bound ScalarFunction or AggregateFunction over a batch of ValueVectors at runtime by calling the function's exec_func or select_func pointer. Handles compile-time evaluation (compileFunc) for constant-foldable expressions, and special-cases list lambda execution through ListLambdaEvaluator.",
-    "status": "active"
-  },
-  {
-    "id": "evaluator.literal-reference",
-    "name": "Literal and Reference Evaluators",
-    "description": "LiteralEvaluator fills an output ValueVector with a single constant value for every position in the selection. ReferenceEvaluator copies a ValueVector from the ResultSet by data position. These are the leaf evaluators in every expression tree.",
-    "status": "active"
-  },
-  {
-    "id": "evaluator.complex-evaluators",
-    "name": "Complex Expression Evaluators",
-    "description": "Specialized evaluators for non-scalar expression types: CaseEvaluator evaluates CASE/WHEN/ELSE branches with short-circuit selection; PathEvaluator assembles PATH values from node and relationship ID sequences; PatternEvaluator (NODE_REL) constructs NODE or REL struct values from property vectors; LambdaEvaluator manages captured-variable bindings for list comprehension lambdas.",
-    "status": "active"
-  },
-  {
-    "id": "evaluator.expression-mapper",
-    "name": "Expression Mapper",
-    "description": "ExpressionMapper (in src/processor/) translates a bound Expression tree from the binder into a concrete ExpressionEvaluator tree wired to the ResultSet at plan-mapping time. It is the bridge between the binder expression representation and the runtime evaluator tree.",
-    "status": "active"
-  },
-
-  // ── function-library ────────────────────────────────────────────────────
-  {
-    "id": "function.scalar-functions",
-    "name": "Scalar Function Implementations",
-    "description": "Implementations of all built-in scalar functions across domains: arithmetic (add, subtract, multiply, divide, modulo, power, abs, floor, ceil, round, log), string (concat, substring, upper, lower, trim, pad, regex, levenshtein), date/timestamp/interval manipulation, comparison, boolean logic, null handling (IS NULL, COALESCE, IFNULL), list/map/struct/union accessors and constructors, UUID, blob, and hash functions.",
-    "status": "active"
-  },
-  {
-    "id": "function.aggregate-functions",
-    "name": "Aggregate Function Implementations",
-    "description": "Built-in aggregate functions: COUNT, COUNT(*), COUNT DISTINCT, SUM, AVG, MIN, MAX. Each aggregate function defines an update function (applied per input row), a combine function (merging partial aggregates across threads), and a finalize function (producing the final output value). Implemented via the AggregateFunction struct.",
-    "status": "active"
-  },
-  {
-    "id": "function.table-functions",
-    "name": "Table Function Framework",
-    "description": "The TableFunction framework (TableFunction, TableFuncBindData, TableFuncSharedState, TableFuncLocalState) that enables functions returning table-shaped results. Used for CALL statements, LOAD CSV/PARQUET, scan replacements, and GDS algorithm outputs. Extensions implement TableFunction to register new data sources and query callables.",
-    "status": "active"
-  },
-  {
-    "id": "function.cast-functions",
-    "name": "Cast and Type Conversion Functions",
-    "description": "Explicit and implicit type cast functions covering all conversion paths between Kuzu types: numeric widening and narrowing, string-to-type parsing (dates, timestamps, UUIDs, lists, structs), type-to-string serialization, and implicit cast cost table used by the ExpressionBinder for overload resolution. Includes the cast_from_string and cast_string_non_nested fast paths.",
-    "status": "active"
-  },
-  {
-    "id": "function.function-registry",
-    "name": "Function Registry and Dispatch",
-    "description": "BuiltInFunctionUtils and FunctionCollection maintain the global registry of all built-in functions keyed by name. findFunction() performs overload resolution by matching argument type IDs against registered parameter signatures, computing implicit cast costs, and returning the best-matching function definition. Supports variadic functions and optional parameters.",
-    "status": "active"
-  },
-
-  // ── graph-analytics ──────────────────────────────────────────────────────
-  {
-    "id": "gds.graph-model",
-    "name": "Graph Model and Entry Set",
-    "description": "Graph model abstractions used by GDS algorithms: NativeGraphEntry (a graph over specific node and rel tables), GraphEntrySet (a named collection of graph entries), and OnDiskGraph (the scan interface for iterating over nodes and their neighborhoods from storage). ParsedGraphEntry holds the parsed graph argument from a GDS function call before binding.",
-    "status": "active"
-  },
-  {
-    "id": "gds.algorithms",
-    "name": "GDS Algorithm Implementations",
-    "description": "Implementations of graph data science algorithms exposed as table functions: shortest path variants (single-source shortest paths, all-pairs shortest paths, weighted shortest paths), BFS/DFS traversal, PageRank, weakly/strongly connected components (including Kosaraju), Louvain community detection, K-core decomposition, spanning forest. Each algorithm is implemented using the GDS frontier-based execution model.",
-    "status": "active"
-  },
-  {
-    "id": "gds.frontier-execution",
-    "name": "GDS Frontier Execution Model",
-    "description": "The morsel-parallel GDS execution framework: GDSFrontier manages the active set of nodes in each BFS/iteration layer; GDSTask decomposes frontier work into morsels executed by the TaskScheduler; GDSVertexCompute and EdgeCompute define the per-node and per-edge computations; GDSState holds per-algorithm mutable state (distances, parent pointers, etc.).",
-    "status": "active"
-  },
-
-  // ── processor ────────────────────────────────────────────────────────────
-  {
-    "id": "processor.plan-mapper",
-    "name": "Plan Mapper",
-    "description": "PlanMapper translates a LogicalPlan tree (produced by the optimizer) into a PhysicalPlan tree of PhysicalOperator nodes. It recursively maps each logical operator to its physical counterpart, wires up ResultSet schemas and data positions, and applies MapperExtensions registered by extensions for custom logical operators.",
-    "status": "active"
-  },
-  {
-    "id": "processor.scan-operators",
-    "name": "Scan Operators",
-    "description": "Physical operators that read data from storage into the pipeline: ScanNodeTable (sequential node scan with column predicate pushdown), ScanRelTable (CSR adjacency list scan), ScanMultiRelTables (fan-out across multiple rel tables), PrimaryKeyScanNodeTable (index lookup by primary key), and TableFunctionCall (generic table function scan for CALL, LOAD, and extension sources).",
-    "status": "active"
-  },
-  {
-    "id": "processor.hash-join",
-    "name": "Hash Join",
-    "description": "Partitioned in-memory hash join implementation: HashJoinBuild constructs a JoinHashTable (a partitioned hash table over key columns backed by FactorizedTable storage) in parallel during the build phase; HashJoinProbe performs vectorized probe lookups against the built table during the probe phase. Supports inner, left, mark, and semi join modes.",
-    "status": "active"
-  },
-  {
-    "id": "processor.aggregate",
-    "name": "Aggregate Operators",
-    "description": "Vectorized aggregation: the Aggregate operator accumulates partial aggregate states across input batches using thread-local hash tables; AggregateFinalize merges partial states across threads and emits one output row per group. AggregateScan iterates over finalized results. Supports grouping keys, DISTINCT aggregates, and all built-in aggregate functions.",
-    "status": "active"
-  },
-  {
-    "id": "processor.dml-operators",
-    "name": "DML Operators",
-    "description": "Physical operators for data mutation: Insert/NodeBatchInsert/RelBatchInsert for node and relationship insertion (including bulk COPY FROM); Delete/NodeDeleteExecutor/RelDeleteExecutor for node and relationship deletion; Set/SetExecutor for property updates; Merge for MERGE (upsert) semantics; all backed by the storage-engine table API and transaction local storage.",
-    "status": "active"
-  },
-  {
-    "id": "processor.ddl-operators",
-    "name": "DDL Operators",
-    "description": "Physical operators for schema manipulation: CreateTable, Drop, Alter, CreateSequence, CreateType, CreateMacro for catalog mutations; AttachDatabase, DetachDatabase, UseDatabase for multi-database management; InstallExtension, LoadExtension for extension lifecycle; ExportDatabase, ImportDatabase for database portability. Each DDL operator updates the Catalog and may notify StorageManager.",
-    "status": "active"
-  },
-  {
-    "id": "processor.result-collection",
-    "name": "Result Collection and FactorizedTable",
-    "description": "ResultCollector accumulates output tuples from the top of the pipeline into a FactorizedTable, a columnar in-memory table backed by MemoryManager that supports both flat and factorized (unflat) columns. FactorizedTablePool manages thread-local partial tables that are merged after parallel execution. ArrowResultCollector is the Arrow-output variant.",
-    "status": "active"
-  },
-  {
-    "id": "processor.recursive-extend",
-    "name": "Recursive Extend",
-    "description": "RecursiveExtend operator implements variable-length path queries (MATCH (a)-[*min..max]->(b)). Uses a BFS/DFS morsel approach with PathPropertyProbe for path property reconstruction and integrates with the semi-masker for selective expansion. Handles path semantics (WALK, TRAIL, ACYCLIC) and recursive pattern predicates.",
-    "status": "active"
-  },
-  {
-    "id": "processor.order-by",
-    "name": "Order-By and TopK",
-    "description": "OrderBy operator performs external sort of tuples using a radix-sort-based key encoder over an in-memory FactorizedTable, with spill-to-disk support when the result exceeds the memory budget. TopK reuses the sort infrastructure with a bounded priority queue for ORDER BY + LIMIT queries.",
-    "status": "active"
-  },
-
-  // ── extension-runtime ────────────────────────────────────────────────────
-  {
-    "id": "ext-runtime.extension-points",
-    "name": "Extension Hook Points",
-    "description": "The set of abstract extension hook interfaces that allow extensions to inject custom behavior into the engine pipeline at well-defined points: TransformerExtension (custom Cypher syntax in the parser), BinderExtension (custom statement binding), PlannerExtension (custom logical operator generation), MapperExtension (custom physical operator generation), StorageExtension (custom table storage backends). Each is registered on the Database object.",
-    "status": "active"
-  },
-  {
-    "id": "ext-runtime.loader",
-    "name": "Extension Loader",
-    "description": "ExtensionManager.loadExtension() dynamically loads a shared library (.so/.dylib/.dll) by path, calls the mandatory ext_init_func_t entry point (passing the ClientContext), and records the loaded extension in the loadedExtensions list. The generated loader stub (generated_extension_loader.cpp.in) maps extension names to their canonical download URLs for auto-loading.",
-    "status": "active"
-  },
-  {
-    "id": "ext-runtime.installer",
-    "name": "Extension Installer",
-    "description": "ExtensionInstaller downloads, verifies, and installs extension shared libraries from an extension repository (official Kuzu repo or user-specified URL) to the local extensions directory. Uses the httpfs/TLS infrastructure for HTTPS downloads and validates checksums. Supports force-reinstall and version pinning.",
-    "status": "active"
-  },
-  {
-    "id": "ext-runtime.catalog-extension",
-    "name": "Extension Catalog Entries",
-    "description": "CatalogExtension is a Catalog subclass that extensions use to add their own node/rel tables, functions, and types to a database instance. It provides the same MVCC-aware API as the main Catalog so that extension-defined schema objects participate in the standard DDL lifecycle (including serialization and checkpointing).",
-    "status": "active"
-  },
-
-  // ── extensions ─────────────────────────────────────────────────────────
-  {
-    "id": "ext.algo",
-    "name": "Graph Algorithm Extension (algo)",
-    "description": "The algo extension exposes advanced graph algorithms beyond the core GDS runtime as loadable table functions: PageRank, weakly/strongly connected components, Louvain community detection, K-core decomposition, spanning forest, and component ID labeling. Algorithms are registered at extension load time and use the GDS frontier execution model.",
-    "status": "active"
-  },
-  {
-    "id": "ext.fts",
-    "name": "Full-Text Search Extension (fts)",
-    "description": "The fts extension adds inverted-index full-text search to Kuzu: CREATE FTS INDEX builds a tokenized inverted index stored as node/rel tables in the database; CALL query_fts() performs ranked keyword queries with BM25 scoring; stemming and configurable tokenization are supported. Index data is persisted using standard Kuzu table storage.",
-    "status": "active"
-  },
-  {
-    "id": "ext.vector",
-    "name": "Vector Index Extension (vector)",
-    "description": "The vector extension adds approximate nearest-neighbor vector similarity search via an HNSW (Hierarchical Navigable Small World) index: CREATE HNSW INDEX builds the index on a float-array property; CALL query_hnsw_index() returns the K nearest neighbors. The index is stored as rel tables connecting candidate node pairs and is queryable with optional semi-mask pre-filtering.",
-    "status": "active"
-  },
-  {
-    "id": "ext.external-db-connectors",
-    "name": "External Database Connectors",
-    "description": "Four extensions that attach external databases as read or read-write data sources: duckdb (DuckDB in-process, with local and remote connector variants and secret manager for credentials), postgres (PostgreSQL via libpq), sqlite (SQLite via embedded driver), neo4j (Neo4j via Bolt protocol). Each registers scan table functions and ATTACH/DETACH DDL support.",
-    "status": "active"
-  },
-  {
-    "id": "ext.cloud-format-connectors",
-    "name": "Cloud and Format Connectors",
-    "description": "Extensions providing remote storage and open table format access: httpfs (HTTP/HTTPS and S3-compatible object storage with caching); azure (Azure Blob Storage and ADLS Gen2); delta (Delta Lake table format); iceberg (Apache Iceberg table format); json (JSON file reading/writing); unity_catalog (Unity Catalog metastore integration); llm (LLM inference table functions for AI-augmented queries).",
-    "status": "active"
-  },
-
-  // ── public-api ───────────────────────────────────────────────────────────
-  {
-    "id": "api.database",
-    "name": "Database Class",
-    "description": "The main::Database class is the top-level entry point for embedding Kuzu. It owns the SystemConfig, StorageManager, Catalog, TransactionManager, QueryProcessor, ExtensionManager, DatabaseManager (for attached databases), and the VirtualFileSystem. Opening a Database path initializes or recovers the database file. The Database is thread-safe; multiple Connections share one Database.",
-    "status": "active"
-  },
-  {
-    "id": "api.connection",
-    "name": "Connection Class",
-    "description": "main::Connection represents a single client session against a Database. It exposes query(), prepare(), execute(), and async variants; manages per-connection settings (thread count, timeout, progress bar); owns a ClientContext that aggregates all per-connection state; and exposes UDF registration (registerVectorizedFunction). Thread-safe for concurrent execution from different threads.",
-    "status": "active"
-  },
-  {
-    "id": "api.query-result",
-    "name": "Query Result",
-    "description": "QueryResult is the returned object from query execution. It exposes isSuccess(), getErrorMessage(), hasNext(), getNext() (returning FlatTuple for row-at-a-time iteration), getColumnNames/Types(), toString() for debug display, toArrow() for Arrow RecordBatch export, and getQuerySummary() for timing and plan statistics. FlatTupleQueryResult and ArrowQueryResult are the two concrete implementations.",
-    "status": "active"
-  },
-  {
-    "id": "api.prepared-statement",
-    "name": "Prepared Statement",
-    "description": "PreparedStatement holds a compiled and optimized physical plan for a parameterized query, enabling repeated execution without re-parsing or re-planning. It stores the bound parameter types and names, compilation status, the physical plan, and optional query summary. Prepared statements are created via Connection::prepare() and executed via Connection::execute().",
-    "status": "active"
-  },
-  {
-    "id": "api.client-context",
-    "name": "Client Context",
-    "description": "ClientContext is the per-connection runtime context aggregating all subsystem handles needed during query execution: pointers to Database, StorageManager, Catalog, TransactionManager, TransactionContext, QueryProcessor, TaskScheduler, ExtensionManager, GraphEntrySet, ProgressBar, active query interrupt flag, and all per-connection configuration settings. Acts as the dependency-injection hub for the entire query pipeline.",
-    "status": "active"
-  },
-
-  // ── c-api ────────────────────────────────────────────────────────────────
-  {
-    "id": "c-api.bindings",
-    "name": "C API Bindings",
-    "description": "Flat C-linkage wrappers in src/c_api/ (declared in kuzu.h) that expose the full Kuzu public API as opaque pointer types and free functions: kuzu_database_init/destroy, kuzu_connection_init/query/prepare/execute, kuzu_query_result_has_next/get_next/destroy, kuzu_flat_tuple_get_value, kuzu_value_* accessors, and kuzu_data_type_* helpers. Enables FFI integration from any language with C interop (Rust, Python ctypes, Swift, etc.).",
-    "status": "active"
-  },
-
-  // ── language-bindings ────────────────────────────────────────────────────
-  {
-    "id": "binding.python",
-    "name": "Python API",
-    "description": "pybind11-based Python extension module (tools/python_api/) exposing Database, Connection, PreparedStatement, QueryResult, and Value classes. The Python-side layer (src_py/) adds idiomatic Python conveniences: async Connection, pandas/numpy/PyArrow result conversion, PyTorch Geometric graph store adapters, and UDF registration accepting Python callables. Installable as the kuzu PyPI package.",
+    "id": "binder.statement-binder",
+    "name": "Statement Binder",
+    "description": "The Binder class that coordinates semantic analysis of all statement types: dispatches DDL, DML (INSERT, MERGE, SET, DELETE), COPY, query, and standalone-call statements to their respective bind methods; resolves table and function names against the Catalog using the active Transaction; and applies BinderExtensions for custom statement types registered by extensions.",
     "status": "active"
   },
   {
@@ -510,9 +72,21 @@
     "status": "active"
   },
   {
+    "id": "binding.python",
+    "name": "Python API",
+    "description": "pybind11-based Python extension module (tools/python_api/) exposing Database, Connection, PreparedStatement, QueryResult, and Value classes. The Python-side layer (src_py/) adds idiomatic Python conveniences: async Connection, pandas/numpy/PyArrow result conversion, PyTorch Geometric graph store adapters, and UDF registration accepting Python callables. Installable as the kuzu PyPI package.",
+    "status": "active"
+  },
+  {
     "id": "binding.rust",
     "name": "Rust API",
     "description": "Rust FFI crate (tools/rust_api/) wrapping the C API via a hand-written ffi.rs binding layer and a safe Rust API in database.rs, connection.rs, query_result.rs, value.rs, and logical_type.rs. Supports optional Apache Arrow integration for zero-copy result export. Distributed as the kuzu crate on crates.io.",
+    "status": "active"
+  },
+  {
+    "id": "binding.shell",
+    "name": "Interactive CLI Shell",
+    "description": "Embedded Cypher shell (tools/shell/) built on linenoise for line editing, history, and completion. Supports multi-line query input, timing display, progress bars, output formatting (table, CSV, JSON), dot-commands for configuration, and SIGINT interrupt handling. Used as the primary interactive interface for Kuzu and as the basis for the shell test suite.",
     "status": "active"
   },
   {
@@ -522,23 +96,387 @@
     "status": "active"
   },
   {
-    "id": "binding.shell",
-    "name": "Interactive CLI Shell",
-    "description": "Embedded Cypher shell (tools/shell/) built on linenoise for line editing, history, and completion. Supports multi-line query input, timing display, progress bars, output formatting (table, CSV, JSON), dot-commands for configuration, and SIGINT interrupt handling. Used as the primary interactive interface for Kuzu and as the basis for the shell test suite.",
-    "status": "active"
-  },
-
-  // ── test-infrastructure ──────────────────────────────────────────────────
-  {
-    "id": "test.e2e-runner",
-    "name": "End-to-End Test Runner",
-    "description": "The test runner framework (test/runner/, test/test_runner/) that parses structured .cypher test files (containing query statements, expected results, error assertions, and dataset directives) and executes them via the public Connection API against preloaded or freshly-copied datasets. TestParser extracts TestStatement objects; EndToEndTest (Google Test fixture) drives execution and diff-checks actual vs. expected output.",
+    "id": "c-api.bindings",
+    "name": "C API Bindings",
+    "description": "Flat C-linkage wrappers in src/c_api/ (declared in kuzu.h) that expose the full Kuzu public API as opaque pointer types and free functions: kuzu_database_init/destroy, kuzu_connection_init/query/prepare/execute, kuzu_query_result_has_next/get_next/destroy, kuzu_flat_tuple_get_value, kuzu_value_* accessors, and kuzu_data_type_* helpers. Enables FFI integration from any language with C interop (Rust, Python ctypes, Swift, etc.).",
     "status": "active"
   },
   {
-    "id": "test.cypher-test-files",
-    "name": "Cypher Test Files",
-    "description": "The corpus of end-to-end .cypher test files in test/test_files/ (organized by subsystem: query/, expression/, ddl/, copy/, extension/, transaction/, etc.) paired with expected output in test/answers/. These files collectively define the expected behavior of the query engine and serve as the executable specification for every engine feature.",
+    "id": "catalog.catalog-entries",
+    "name": "Catalog Entry Types",
+    "description": "The hierarchy of typed CatalogEntry subclasses representing schema objects: NodeTableCatalogEntry, RelGroupCatalogEntry, TypeCatalogEntry, FunctionCatalogEntry, ScalarMacroCatalogEntry, SequenceCatalogEntry, IndexCatalogEntry. Each entry is serializable, versioned for MVCC visibility, and carries its property definitions.",
+    "status": "active"
+  },
+  {
+    "id": "catalog.mvcc-visibility",
+    "name": "Catalog MVCC Versioning",
+    "description": "CatalogSet implements multi-version concurrency control for schema objects via an MVCC entry chain: each DDL mutation creates a new CatalogEntry version linked to the previous. Transaction-aware getEntry() returns the version visible to the reading transaction snapshot, allowing concurrent DDL and DML without full schema locking.",
+    "status": "active"
+  },
+  {
+    "id": "catalog.schema-registry",
+    "name": "Schema Registry",
+    "description": "The Catalog class is the top-level schema registry holding CatalogSets for node tables, relationship tables, types, functions, scalar macros, and sequences. Provides transaction-aware lookup and mutation operations used by the binder, planner, DDL executor, and storage manager.",
+    "status": "active"
+  },
+  {
+    "id": "common.arrow-interop",
+    "name": "Apache Arrow Interop",
+    "description": "Bidirectional conversion between Kuzu ValueVectors/types and the Apache Arrow columnar format. Enables zero-copy or near-zero-copy export of query results to Arrow RecordBatches and import of Arrow data during COPY operations and external scans.",
+    "status": "active"
+  },
+  {
+    "id": "common.exceptions",
+    "name": "Exception Hierarchy",
+    "description": "Typed C++ exception hierarchy covering all engine error domains: BinderException, CatalogException, ConnectionException, ConversionException, CopyException, IOException, InternalException, InterruptException, NotImplementedException, OverflowException, ParserException, RuntimeException, StorageException, TransactionManagerException. Enables callers to distinguish and handle error categories.",
+    "status": "active"
+  },
+  {
+    "id": "common.filesystem",
+    "name": "Virtual File System",
+    "description": "Pluggable filesystem abstraction (FileSystem, VirtualFileSystem) that allows the engine and extensions to register multiple filesystem implementations (local, gzip-compressed, HTTP, S3, Azure) and dispatch open/read/write/glob calls to the correct backend. LocalFileSystem provides the default on-disk implementation.",
+    "status": "active"
+  },
+  {
+    "id": "common.null-mask",
+    "name": "Null Mask",
+    "description": "Bit-packed null tracking for ValueVectors (NullMask) with SIMD-accelerated bulk set/test operations and a no-nulls fast path. Also includes the roaring-bitmap-backed SemiMask used for semi-join filtering during scan operations.",
+    "status": "active"
+  },
+  {
+    "id": "common.serializer",
+    "name": "Serialization Framework",
+    "description": "Binary serialization and deserialization utilities (Serializer, Deserializer, BufferedFileWriter, BufferReader) used to persist catalog metadata, WAL records, column chunk metadata, and other durable structures. Supports primitive values, strings, vectors, maps, and optional pointers with a pluggable Writer/Reader backend.",
+    "status": "active"
+  },
+  {
+    "id": "common.task-scheduler",
+    "name": "Task Scheduler",
+    "description": "Multi-threaded work-stealing task execution engine (TaskScheduler, Task) that drives parallel query execution. Maintains a FIFO queue of tasks, assigns worker threads, and propagates exceptions back to the calling thread. Used by the Query Processor to parallelize pipeline execution across morsels.",
+    "status": "active"
+  },
+  {
+    "id": "common.type-system",
+    "name": "Type System",
+    "description": "The complete set of logical and physical data types used throughout the engine: scalar types (bool, integers, floats, strings, blobs, UUID, dates, timestamps, intervals), composite types (list, map, struct, union, array), and graph-specific types (NODE, REL, RECURSIVE_REL, PATH, INTERNAL_ID). Defined in LogicalType and its sub-types; all other subsystems depend on this vocabulary.",
+    "status": "active"
+  },
+  {
+    "id": "common.value-vector",
+    "name": "Value Vector",
+    "description": "The columnar batch data structure (ValueVector and DataChunk) that represents a fixed-capacity batch of typed values during query execution. ValueVector holds a typed array plus a NullMask and a DataChunkState selector; DataChunk groups multiple ValueVectors sharing the same selection state. The fundamental unit passed between physical operators.",
+    "status": "active"
+  },
+  {
+    "id": "evaluator.complex-evaluators",
+    "name": "Complex Expression Evaluators",
+    "description": "Specialized evaluators for non-scalar expression types: CaseEvaluator evaluates CASE/WHEN/ELSE branches with short-circuit selection; PathEvaluator assembles PATH values from node and relationship ID sequences; PatternEvaluator (NODE_REL) constructs NODE or REL struct values from property vectors; LambdaEvaluator manages captured-variable bindings for list comprehension lambdas.",
+    "status": "active"
+  },
+  {
+    "id": "evaluator.expression-mapper",
+    "name": "Expression Mapper",
+    "description": "ExpressionMapper (in src/processor/) translates a bound Expression tree from the binder into a concrete ExpressionEvaluator tree wired to the ResultSet at plan-mapping time. It is the bridge between the binder expression representation and the runtime evaluator tree.",
+    "status": "active"
+  },
+  {
+    "id": "evaluator.function-evaluator",
+    "name": "Function Evaluator",
+    "description": "FunctionEvaluator executes a bound ScalarFunction or AggregateFunction over a batch of ValueVectors at runtime by calling the function's exec_func or select_func pointer. Handles compile-time evaluation (compileFunc) for constant-foldable expressions, and special-cases list lambda execution through ListLambdaEvaluator.",
+    "status": "active"
+  },
+  {
+    "id": "evaluator.literal-reference",
+    "name": "Literal and Reference Evaluators",
+    "description": "LiteralEvaluator fills an output ValueVector with a single constant value for every position in the selection. ReferenceEvaluator copies a ValueVector from the ResultSet by data position. These are the leaf evaluators in every expression tree.",
+    "status": "active"
+  },
+  {
+    "id": "ext-runtime.catalog-extension",
+    "name": "Extension Catalog Entries",
+    "description": "CatalogExtension is a Catalog subclass that extensions use to add their own node/rel tables, functions, and types to a database instance. It provides the same MVCC-aware API as the main Catalog so that extension-defined schema objects participate in the standard DDL lifecycle (including serialization and checkpointing).",
+    "status": "active"
+  },
+  {
+    "id": "ext-runtime.extension-points",
+    "name": "Extension Hook Points",
+    "description": "The set of abstract extension hook interfaces that allow extensions to inject custom behavior into the engine pipeline at well-defined points: TransformerExtension (custom Cypher syntax in the parser), BinderExtension (custom statement binding), PlannerExtension (custom logical operator generation), MapperExtension (custom physical operator generation), StorageExtension (custom table storage backends). Each is registered on the Database object.",
+    "status": "active"
+  },
+  {
+    "id": "ext-runtime.installer",
+    "name": "Extension Installer",
+    "description": "ExtensionInstaller downloads, verifies, and installs extension shared libraries from an extension repository (official Kuzu repo or user-specified URL) to the local extensions directory. Uses the httpfs/TLS infrastructure for HTTPS downloads and validates checksums. Supports force-reinstall and version pinning.",
+    "status": "active"
+  },
+  {
+    "id": "ext-runtime.loader",
+    "name": "Extension Loader",
+    "description": "ExtensionManager.loadExtension() dynamically loads a shared library (.so/.dylib/.dll) by path, calls the mandatory ext_init_func_t entry point (passing the ClientContext), and records the loaded extension in the loadedExtensions list. The generated loader stub (generated_extension_loader.cpp.in) maps extension names to their canonical download URLs for auto-loading.",
+    "status": "active"
+  },
+  {
+    "id": "ext.algo",
+    "name": "Graph Algorithm Extension (algo)",
+    "description": "The algo extension exposes advanced graph algorithms beyond the core GDS runtime as loadable table functions: PageRank, weakly/strongly connected components, Louvain community detection, K-core decomposition, spanning forest, and component ID labeling. Algorithms are registered at extension load time and use the GDS frontier execution model.",
+    "status": "active"
+  },
+  {
+    "id": "ext.cloud-format-connectors",
+    "name": "Cloud and Format Connectors",
+    "description": "Extensions providing remote storage and open table format access: httpfs (HTTP/HTTPS and S3-compatible object storage with caching); azure (Azure Blob Storage and ADLS Gen2); delta (Delta Lake table format); iceberg (Apache Iceberg table format); json (JSON file reading/writing); unity_catalog (Unity Catalog metastore integration); llm (LLM inference table functions for AI-augmented queries).",
+    "status": "active"
+  },
+  {
+    "id": "ext.external-db-connectors",
+    "name": "External Database Connectors",
+    "description": "Four extensions that attach external databases as read or read-write data sources: duckdb (DuckDB in-process, with local and remote connector variants and secret manager for credentials), postgres (PostgreSQL via libpq), sqlite (SQLite via embedded driver), neo4j (Neo4j via Bolt protocol). Each registers scan table functions and ATTACH/DETACH DDL support.",
+    "status": "active"
+  },
+  {
+    "id": "ext.fts",
+    "name": "Full-Text Search Extension (fts)",
+    "description": "The fts extension adds inverted-index full-text search to Kuzu: CREATE FTS INDEX builds a tokenized inverted index stored as node/rel tables in the database; CALL query_fts() performs ranked keyword queries with BM25 scoring; stemming and configurable tokenization are supported. Index data is persisted using standard Kuzu table storage.",
+    "status": "active"
+  },
+  {
+    "id": "ext.vector",
+    "name": "Vector Index Extension (vector)",
+    "description": "The vector extension adds approximate nearest-neighbor vector similarity search via an HNSW (Hierarchical Navigable Small World) index: CREATE HNSW INDEX builds the index on a float-array property; CALL query_hnsw_index() returns the K nearest neighbors. The index is stored as rel tables connecting candidate node pairs and is queryable with optional semi-mask pre-filtering.",
+    "status": "active"
+  },
+  {
+    "id": "function.aggregate-functions",
+    "name": "Aggregate Function Implementations",
+    "description": "Built-in aggregate functions: COUNT, COUNT(*), COUNT DISTINCT, SUM, AVG, MIN, MAX. Each aggregate function defines an update function (applied per input row), a combine function (merging partial aggregates across threads), and a finalize function (producing the final output value). Implemented via the AggregateFunction struct.",
+    "status": "active"
+  },
+  {
+    "id": "function.cast-functions",
+    "name": "Cast and Type Conversion Functions",
+    "description": "Explicit and implicit type cast functions covering all conversion paths between Kuzu types: numeric widening and narrowing, string-to-type parsing (dates, timestamps, UUIDs, lists, structs), type-to-string serialization, and implicit cast cost table used by the ExpressionBinder for overload resolution. Includes the cast_from_string and cast_string_non_nested fast paths.",
+    "status": "active"
+  },
+  {
+    "id": "function.function-registry",
+    "name": "Function Registry and Dispatch",
+    "description": "BuiltInFunctionUtils and FunctionCollection maintain the global registry of all built-in functions keyed by name. findFunction() performs overload resolution by matching argument type IDs against registered parameter signatures, computing implicit cast costs, and returning the best-matching function definition. Supports variadic functions and optional parameters.",
+    "status": "active"
+  },
+  {
+    "id": "function.scalar-functions",
+    "name": "Scalar Function Implementations",
+    "description": "Implementations of all built-in scalar functions across domains: arithmetic (add, subtract, multiply, divide, modulo, power, abs, floor, ceil, round, log), string (concat, substring, upper, lower, trim, pad, regex, levenshtein), date/timestamp/interval manipulation, comparison, boolean logic, null handling (IS NULL, COALESCE, IFNULL), list/map/struct/union accessors and constructors, UUID, blob, and hash functions.",
+    "status": "active"
+  },
+  {
+    "id": "function.table-functions",
+    "name": "Table Function Framework",
+    "description": "The TableFunction framework (TableFunction, TableFuncBindData, TableFuncSharedState, TableFuncLocalState) that enables functions returning table-shaped results. Used for CALL statements, LOAD CSV/PARQUET, scan replacements, and GDS algorithm outputs. Extensions implement TableFunction to register new data sources and query callables.",
+    "status": "active"
+  },
+  {
+    "id": "gds.algorithms",
+    "name": "GDS Algorithm Implementations",
+    "description": "Implementations of graph data science algorithms exposed as table functions: shortest path variants (single-source shortest paths, all-pairs shortest paths, weighted shortest paths), BFS/DFS traversal, PageRank, weakly/strongly connected components (including Kosaraju), Louvain community detection, K-core decomposition, spanning forest. Each algorithm is implemented using the GDS frontier-based execution model.",
+    "status": "active"
+  },
+  {
+    "id": "gds.frontier-execution",
+    "name": "GDS Frontier Execution Model",
+    "description": "The morsel-parallel GDS execution framework: GDSFrontier manages the active set of nodes in each BFS/iteration layer; GDSTask decomposes frontier work into morsels executed by the TaskScheduler; GDSVertexCompute and EdgeCompute define the per-node and per-edge computations; GDSState holds per-algorithm mutable state (distances, parent pointers, etc.).",
+    "status": "active"
+  },
+  {
+    "id": "gds.graph-model",
+    "name": "Graph Model and Entry Set",
+    "description": "Graph model abstractions used by GDS algorithms: NativeGraphEntry (a graph over specific node and rel tables), GraphEntrySet (a named collection of graph entries), and OnDiskGraph (the scan interface for iterating over nodes and their neighborhoods from storage). ParsedGraphEntry holds the parsed graph argument from a GDS function call before binding.",
+    "status": "active"
+  },
+  {
+    "id": "optimizer.factorization",
+    "name": "Factorization Rewriting",
+    "description": "FactorizationRewriter and RemoveFactorizationRewriter manage the factorized representation of intermediate results: FactorizationRewriter inserts Flatten operators to convert factorized flat/unflat vector batches where needed; RemoveFactorizationRewriter eliminates redundant flattening after other rewrites.",
+    "status": "active"
+  },
+  {
+    "id": "optimizer.filter-pushdown",
+    "name": "Filter and Projection Push-down",
+    "description": "FilterPushDownOptimizer and ProjectionPushDownOptimizer traverse the logical plan tree and push filter predicates and projection lists as deep as possible toward leaf scans, eliminating unnecessary rows and columns early and reducing data volume processed by upper operators.",
+    "status": "active"
+  },
+  {
+    "id": "optimizer.join-acceleration",
+    "name": "Join Acceleration Optimizers",
+    "description": "A suite of join-specific optimizer passes: AccHashJoinOptimizer rewrites hash joins to use semi-masking index probes (SIP) where a small probe side allows a pre-filter; RemoveUnnecessaryJoinOptimizer eliminates joins whose output is provably unused; AggKeyDependencyOptimizer removes redundant group-by keys inferred from functional dependencies.",
+    "status": "active"
+  },
+  {
+    "id": "optimizer.limit-topk",
+    "name": "Limit and TopK Push-down",
+    "description": "LimitPushDownOptimizer pushes LIMIT operators closer to scans to enable early termination. TopKOptimizer rewrites ORDER BY + LIMIT into a single TopK operator that maintains a bounded priority queue, avoiding full sort for top-N queries.",
+    "status": "active"
+  },
+  {
+    "id": "parser.ast-nodes",
+    "name": "Parsed AST Node Types",
+    "description": "The hierarchy of parsed (unbound) AST node types produced by the transformer: Statement subclasses (RegularQuery, CreateTable, Drop, Alter, CopyFrom, CopyTo, StandaloneCall, etc.) and ParsedExpression subclasses (ParsedFunctionExpression, ParsedLiteralExpression, ParsedVariableExpression, ParsedSubqueryExpression, ParsedCaseExpression, etc.).",
+    "status": "active"
+  },
+  {
+    "id": "parser.cypher-grammar",
+    "name": "Cypher Grammar",
+    "description": "The ANTLR4 grammar file (Cypher.g4) defining the complete Cypher query language supported by Kuzu, including standard openCypher clauses (MATCH, WHERE, RETURN, WITH, UNWIND, CREATE, MERGE, SET, DELETE) and Kuzu extensions (COPY, LOAD, CALL, ATTACH, DETACH, USE, INSTALL EXTENSION).",
+    "status": "active"
+  },
+  {
+    "id": "parser.entry-point",
+    "name": "Parser Entry Point",
+    "description": "The Parser::parseQuery() static method, the single public entry point for query parsing. Takes a Cypher string and an optional list of TransformerExtensions, invokes the ANTLR4 lexer/parser, runs the transformer, and returns a vector of Statement objects. Extensions can hook into the transform phase to handle custom syntax.",
+    "status": "active"
+  },
+  {
+    "id": "parser.transformer",
+    "name": "Parse Tree Transformer",
+    "description": "The Transformer class that walks the ANTLR4 concrete syntax tree produced by the generated KuzuCypherParser and converts it into the engine typed parsed AST node hierarchy. This is the bridge between the generated ANTLR4 code and the engine AST representation.",
+    "status": "active"
+  },
+  {
+    "id": "planner.join-order",
+    "name": "Join Order Enumerator",
+    "description": "Dynamic-programming join order enumeration (JoinPlanSolver, JoinTreeConstructor, CardinalityEstimator) that considers all valid orderings of node and relationship scans in a query graph, estimates intermediate result sizes using table statistics, and selects the lowest-estimated-cost plan. Supports bushy join trees and semi-masking (SIP) optimizations.",
+    "status": "active"
+  },
+  {
+    "id": "planner.logical-operators",
+    "name": "Logical Operator Tree",
+    "description": "The complete set of logical operator node types (LogicalOperator subclasses) that form the engine logical plan: LogicalScan, LogicalExtend, LogicalHashJoin, LogicalIntersect, LogicalFilter, LogicalProjection, LogicalAggregate, LogicalOrderBy, LogicalLimit, LogicalInsert, LogicalDelete, LogicalCopyFrom, LogicalCopyTo, and others. Each operator carries schema information and is traversed by the optimizer.",
+    "status": "active"
+  },
+  {
+    "id": "planner.subquery-planning",
+    "name": "Subquery and Multi-Part Planning",
+    "description": "Planning logic for correlated and uncorrelated subqueries, UNION/UNION ALL, and multi-part queries connected by WITH and RETURN clauses. Handles subquery unnesting decisions and maintains a SubplansTable that caches candidate logical plans per subset of query graph nodes.",
+    "status": "active"
+  },
+  {
+    "id": "processor.aggregate",
+    "name": "Aggregate Operators",
+    "description": "Vectorized aggregation: the Aggregate operator accumulates partial aggregate states across input batches using thread-local hash tables; AggregateFinalize merges partial states across threads and emits one output row per group. AggregateScan iterates over finalized results. Supports grouping keys, DISTINCT aggregates, and all built-in aggregate functions.",
+    "status": "active"
+  },
+  {
+    "id": "processor.ddl-operators",
+    "name": "DDL Operators",
+    "description": "Physical operators for schema manipulation: CreateTable, Drop, Alter, CreateSequence, CreateType, CreateMacro for catalog mutations; AttachDatabase, DetachDatabase, UseDatabase for multi-database management; InstallExtension, LoadExtension for extension lifecycle; ExportDatabase, ImportDatabase for database portability. Each DDL operator updates the Catalog and may notify StorageManager.",
+    "status": "active"
+  },
+  {
+    "id": "processor.dml-operators",
+    "name": "DML Operators",
+    "description": "Physical operators for data mutation: Insert/NodeBatchInsert/RelBatchInsert for node and relationship insertion (including bulk COPY FROM); Delete/NodeDeleteExecutor/RelDeleteExecutor for node and relationship deletion; Set/SetExecutor for property updates; Merge for MERGE (upsert) semantics; all backed by the storage-engine table API and transaction local storage.",
+    "status": "active"
+  },
+  {
+    "id": "processor.hash-join",
+    "name": "Hash Join",
+    "description": "Partitioned in-memory hash join implementation: HashJoinBuild constructs a JoinHashTable (a partitioned hash table over key columns backed by FactorizedTable storage) in parallel during the build phase; HashJoinProbe performs vectorized probe lookups against the built table during the probe phase. Supports inner, left, mark, and semi join modes.",
+    "status": "active"
+  },
+  {
+    "id": "processor.order-by",
+    "name": "Order-By and TopK",
+    "description": "OrderBy operator performs external sort of tuples using a radix-sort-based key encoder over an in-memory FactorizedTable, with spill-to-disk support when the result exceeds the memory budget. TopK reuses the sort infrastructure with a bounded priority queue for ORDER BY + LIMIT queries.",
+    "status": "active"
+  },
+  {
+    "id": "processor.plan-mapper",
+    "name": "Plan Mapper",
+    "description": "PlanMapper translates a LogicalPlan tree (produced by the optimizer) into a PhysicalPlan tree of PhysicalOperator nodes. It recursively maps each logical operator to its physical counterpart, wires up ResultSet schemas and data positions, and applies MapperExtensions registered by extensions for custom logical operators.",
+    "status": "active"
+  },
+  {
+    "id": "processor.recursive-extend",
+    "name": "Recursive Extend",
+    "description": "RecursiveExtend operator implements variable-length path queries (MATCH (a)-[*min..max]->(b)). Uses a BFS/DFS morsel approach with PathPropertyProbe for path property reconstruction and integrates with the semi-masker for selective expansion. Handles path semantics (WALK, TRAIL, ACYCLIC) and recursive pattern predicates.",
+    "status": "active"
+  },
+  {
+    "id": "processor.result-collection",
+    "name": "Result Collection and FactorizedTable",
+    "description": "ResultCollector accumulates output tuples from the top of the pipeline into a FactorizedTable, a columnar in-memory table backed by MemoryManager that supports both flat and factorized (unflat) columns. FactorizedTablePool manages thread-local partial tables that are merged after parallel execution. ArrowResultCollector is the Arrow-output variant.",
+    "status": "active"
+  },
+  {
+    "id": "processor.scan-operators",
+    "name": "Scan Operators",
+    "description": "Physical operators that read data from storage into the pipeline: ScanNodeTable (sequential node scan with column predicate pushdown), ScanRelTable (CSR adjacency list scan), ScanMultiRelTables (fan-out across multiple rel tables), PrimaryKeyScanNodeTable (index lookup by primary key), and TableFunctionCall (generic table function scan for CALL, LOAD, and extension sources).",
+    "status": "active"
+  },
+  {
+    "id": "storage.buffer-manager",
+    "name": "Buffer Manager",
+    "description": "Clock-sweep page cache (BufferManager + MemoryManager) that maps database file pages into memory frames, manages eviction under a configurable memory budget, and provides pinned frame access to all storage readers and writers. Also exposes a malloc-backed MemoryManager for allocating in-memory-only buffers used by operators.",
+    "status": "active"
+  },
+  {
+    "id": "storage.checkpointer",
+    "name": "Checkpointer",
+    "description": "Coordinated checkpoint process (Checkpointer) that atomically promotes in-memory column group changes to the durable main data file, serializes the catalog and database header, writes a checkpoint WAL record, and applies shadow pages. Triggered automatically when WAL size exceeds a configurable threshold or explicitly by a CHECKPOINT statement.",
+    "status": "active"
+  },
+  {
+    "id": "storage.column-storage",
+    "name": "Column Storage",
+    "description": "Columnar persistent storage layer for node and relationship tables. Column data is organized into NodeGroups of fixed capacity, each holding one ColumnChunk per column. Supports typed column implementations (StringColumn, ListColumn, StructColumn, DictionaryColumn, NullColumn) and a unified scan/insert/update/delete state machine.",
+    "status": "active"
+  },
+  {
+    "id": "storage.compression",
+    "name": "Column Compression",
+    "description": "Per-column compression algorithms applied at flush time: bitpacking (integer columns, with uint128 support), ALP (Adaptive Lossless floating-Point for float/double columns), dictionary encoding (for strings and repeated values), run-length encoding, and an uncompressed fallback. Compression selection is automatic based on column data statistics.",
+    "status": "active"
+  },
+  {
+    "id": "storage.hash-index",
+    "name": "Hash Index",
+    "description": "On-disk and in-memory hash index (OnDiskHashIndex, HashIndex<T>, InMemHashIndex<T>) used as the primary key index for node tables. Supports point lookups, inserts, and bulk loading. A LocalHashIndex buffers uncommitted inserts during transactions. The index header and slot structures are persisted in the DiskArrayCollection.",
+    "status": "active"
+  },
+  {
+    "id": "storage.local-storage",
+    "name": "Local Transaction Storage",
+    "description": "Per-transaction write buffer (LocalStorage, LocalNodeTable, LocalRelTable) that accumulates uncommitted inserts, updates, and deletes in memory. Scan operations merge committed column storage with local changes to provide correct read-your-own-writes semantics. On commit, local changes are flushed to shared column storage and the WAL.",
+    "status": "active"
+  },
+  {
+    "id": "storage.node-rel-tables",
+    "name": "Node and Relationship Table Storage",
+    "description": "High-level table storage API (Table, NodeTable, RelTable) that layers transaction-aware CRUD operations over the column storage substrate. NodeTable owns a primary-key hash index and manages node offsets. RelTable manages forward and backward CSR adjacency lists in RelTableData. Both tables integrate with LocalStorage for uncommitted write visibility.",
+    "status": "active"
+  },
+  {
+    "id": "storage.shadow-paging",
+    "name": "Shadow Paging",
+    "description": "Atomic page-replacement durability mechanism (ShadowFile, ShadowUtils) used during checkpointing: modified pages are written to a shadow file then atomically swapped into the main data file, avoiding partial-write corruption without requiring per-record WAL entries for bulk data changes.",
+    "status": "active"
+  },
+  {
+    "id": "storage.statistics",
+    "name": "Table and Column Statistics",
+    "description": "Per-table cardinality estimates and per-column statistics (TableStats, ColumnStats) maintained incrementally during inserts and updated at checkpoint. Includes a HyperLogLog estimator for distinct value counts. Statistics are consumed by the Query Planner for join order selection.",
+    "status": "active"
+  },
+  {
+    "id": "storage.storage-manager",
+    "name": "Storage Manager",
+    "description": "Top-level storage coordinator (StorageManager) that owns the data FileHandle, MemoryManager, WAL, ShadowFile, and the map of all Table instances. Provides create/drop table DDL operations called by the processor DDL executor, and the recover() entry point used at database startup.",
+    "status": "active"
+  },
+  {
+    "id": "storage.wal",
+    "name": "Write-Ahead Log",
+    "description": "Durability subsystem comprising a shared WAL and per-transaction LocalWAL. On commit, each transaction's LocalWAL entries are flushed to the shared WAL file. The WAL replayer recovers committed but not-yet-checkpointed writes on startup. Checksum validation guards record integrity.",
     "status": "active"
   },
   {
@@ -548,9 +486,45 @@
     "status": "active"
   },
   {
+    "id": "test.cypher-test-files",
+    "name": "Cypher Test Files",
+    "description": "The corpus of end-to-end .cypher test files in test/test_files/ (organized by subsystem: query/, expression/, ddl/, copy/, extension/, transaction/, etc.) paired with expected output in test/answers/. These files collectively define the expected behavior of the query engine and serve as the executable specification for every engine feature.",
+    "status": "active"
+  },
+  {
+    "id": "test.e2e-runner",
+    "name": "End-to-End Test Runner",
+    "description": "The test runner framework (test/runner/, test/test_runner/) that parses structured .cypher test files (containing query statements, expected results, error assertions, and dataset directives) and executes them via the public Connection API against preloaded or freshly-copied datasets. TestParser extracts TestStatement objects; EndToEndTest (Google Test fixture) drives execution and diff-checks actual vs. expected output.",
+    "status": "active"
+  },
+  {
     "id": "test.graph-test-infra",
     "name": "Graph Test Infrastructure",
     "description": "BaseGraphTest and DBTest (test/graph_test/) are Google Test base fixtures that handle database lifecycle for tests: creating a fresh database for each test, loading the standard tinysnb or custom dataset via COPY, and providing a test Connection. TestHelper provides assertion utilities and per-test temporary directory management.",
+    "status": "active"
+  },
+  {
+    "id": "transaction.context",
+    "name": "Transaction Context",
+    "description": "TransactionContext is the connection-level transaction state machine managing AUTO_COMMIT vs. MANUAL transaction modes. It wraps the active Transaction object per connection, delegates begin/commit/rollback to TransactionManager, and owns the LocalCacheManager for connection-scoped cached objects.",
+    "status": "active"
+  },
+  {
+    "id": "transaction.lifecycle",
+    "name": "Transaction Lifecycle Management",
+    "description": "TransactionManager coordinates the full transaction lifecycle: beginTransaction (assigns a monotonically increasing transaction ID and timestamp), commit (flushes LocalWAL to WAL, triggers auto-checkpoint if threshold exceeded), and rollback (reverts local storage and undo buffer changes). Enforces single active write transaction at a time.",
+    "status": "active"
+  },
+  {
+    "id": "transaction.snapshot-isolation",
+    "name": "Snapshot Isolation",
+    "description": "Each Transaction carries a read timestamp serving as its consistent snapshot marker. Storage version chains (VersionInfo, UpdateInfo) record which transaction ID wrote each version, and scan operations use the transaction snapshot timestamp to skip versions not visible at snapshot time, implementing snapshot isolation.",
+    "status": "active"
+  },
+  {
+    "id": "transaction.undo-buffer",
+    "name": "Undo Buffer",
+    "description": "Per-transaction UndoBuffer that records before-images for catalog mutations and storage version records. On rollback, the undo buffer is replayed in reverse to restore catalog entries and storage version chains to their pre-transaction state. Tightly coupled to CatalogSet and VersionInfo in column storage.",
     "status": "active"
   }
 ]
