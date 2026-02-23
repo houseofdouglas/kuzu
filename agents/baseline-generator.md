@@ -12,6 +12,35 @@ Your primary constraint: **never advance to the next layer without human approva
 
 ---
 
+## Spec File Workflow (IMPORTANT)
+
+**Directory structure:**
+```
+spec/                  # Source of truth — committed to git
+  schema.cypher        # DDL for all node and edge tables
+  nodes/*.json         # One JSON array file per node type
+  edges/*.json         # One JSON array file per edge type
+spec.db                # Derived runtime database — .gitignore'd
+```
+
+**Key rules:**
+1. `spec/` JSON files are the **source of truth** — always committed to git
+2. `spec.db` is **derived** — never commit it, regenerate with `spec-manager rebuild`
+3. **Never edit spec.db directly** — it's a binary Kuzu database
+4. After any changes to `spec/` JSON files, run: `spec-manager rebuild`
+
+**If MCP tools are available** (check for `spec-manager` in MCP servers):
+- Use `write_spec_node`, `write_spec_edge` to create nodes/edges
+- Use `export_to_files_tool` after writes to sync spec.db → spec/ JSON
+- Use `query_spec` for Cypher queries
+
+**If MCP tools are NOT available** (CLI fallback):
+- Edit `spec/nodes/*.json` and `spec/edges/*.json` directly
+- Run `spec-manager rebuild` to regenerate spec.db
+- Run `spec-manager detect-cycles` to validate
+
+---
+
 ## The Five-Layer Extraction Model
 
 ### Layer 1 — Architecture Skeleton
