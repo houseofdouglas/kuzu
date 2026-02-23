@@ -110,34 +110,48 @@ This repository uses a graph-based specification system built on Kuzu.
 agents/          # Claude agent definitions for spec management (6 agents)
 spec/            # Source of truth — committed to git
   schema.cypher  # DDL for all node and edge tables
-  nodes/         # One JSON array file per node type
+  nodes/         # One JSON array file per node type (Feature, Component, Interface, Requirement)
   edges/         # One JSON array file per edge type
 spec.db          # Derived — .gitignore'd, rebuilt from spec/ on load
+spec_manager/    # Python package: SpecDB, node/edge CRUD, export, diff, merge, MCP server
 specifications/  # Design documentation for the spec system itself
 ```
 
-**Note:** JSON files in `spec/nodes/` and `spec/edges/` use JSONC format — `//` line comments are allowed. Strip them before parsing with `json.loads()`:
-
-```python
-import json, kuzu, pathlib
-
-def strip_comments(text):
-    lines = [l for l in text.splitlines() if not l.strip().startswith("//")]
-    return "\n".join(lines)
-
-def parse_statements(sql):
-    return [s.strip() for s in strip_comments(sql).split(";") if s.strip()]
-
-db = kuzu.Database("spec.db")
-conn = kuzu.Connection(db)
-for stmt in parse_statements(pathlib.Path("spec/schema.cypher").read_text()):
-    conn.execute(stmt)
-# Data is loaded by spec-manager via parameterized MERGE queries (see agents/spec-manager.md)
+**Setup:**
+```bash
+pip install -e .        # installs spec-manager CLI and all deps (kuzu, fastmcp)
 ```
+
+**CLI (`spec-manager` or `python3 -m spec_manager`):**
+```bash
+spec-manager rebuild              # Rebuild spec.db from spec/ files (deletes old DB first)
+spec-manager detect-cycles        # Check for cycles in DAG relations (exits 1 if found)
+spec-manager export               # Serialize spec.db → spec/ JSON files
+spec-manager query '<cypher>'     # Run a Cypher query and print results as JSON
+spec-manager node <id>            # Read a node and its neighbors as JSON
+spec-manager list [<table>]       # List all nodes, optionally filtered by table
+spec-manager counts               # Print node/edge counts
+```
+
+**MCP server** (for Claude agents via `.mcp.json`):
+```bash
+python3 -m spec_manager.mcp_server          # stdio transport
+python3 -m spec_manager.mcp_server --db /path/to/spec.db --spec-dir /path/to/spec
+```
+Tools exposed: `read_spec_node`, `write_spec_node`, `write_spec_edge`, `query_spec`,
+`detect_cycles_tool`, `get_affected_by_tool`, `export_to_files_tool`, `list_spec_nodes`,
+`update_spec_node`, `delete_spec_node`.
+
+**Kuzu gotchas (all encoded in `spec_manager/`):**
+- JSONC `//` comments must be stripped before `json.loads()` — `db.py` handles this
+- Parameters must be prefixed `p_` (e.g. `$p_id`) — `$from`, `$to`, `$desc` are reserved keywords
+- No `MERGE ... SET` — always use `CREATE` for new nodes; `SET` for updates
+- CREATE REL requires explicit node labels: `MATCH (a:Feature {id:$p_f}), (b:Component {id:$p_t})`
+- Use `label(n)` not `labels(n)[0]` — the plural form returns empty strings
+- Iterate results with `has_next()` / `get_next()` (no `get_as_df()` — avoids numpy dep)
+- Cycle pre-check: `MATCH (a)-[:Rel* ACYCLIC 1..50]->(b)` syntax
 
 **Agent pipeline:**
 - `baseline-generator` → `repo-explorer` — bootstrap a spec from an existing codebase
 - `spec-author` → `feature-analyst` → `spec-manager` — add/update spec nodes day-to-day
 - `merge-coordinator` — reconcile branch spec divergence at PR time
-
-Requires: `pip install kuzu`
