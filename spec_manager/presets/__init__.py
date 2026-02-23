@@ -9,7 +9,7 @@ from pathlib import Path
 
 PRESETS_DIR = Path(__file__).parent
 
-AVAILABLE_PRESETS = ["generic", "spring-boot", "java"]
+AVAILABLE_PRESETS = ["generic", "spring-boot", "java", "nextjs"]
 
 
 def get_preset_dir(preset: str) -> Path:
