@@ -29,7 +29,8 @@ from .db import SpecDB
 from .nodes import read_node, list_nodes
 from .edges import detect_cycles
 from .export import export_to_files
-from .init import init_spec, generate_mcp_config, generate_gitignore_entries
+from .init import init_spec, init_agents, generate_mcp_config, generate_gitignore_entries
+from .agents import AVAILABLE_AGENTS
 from .presets import AVAILABLE_PRESETS
 from .schema import discover_schema
 
@@ -63,7 +64,8 @@ def cmd_init(args: argparse.Namespace) -> int:
     print("Next steps:")
     print(f"  1. Review/customize: {spec_dir}/schema.cypher")
     print(f"  2. Build database:   spec-manager rebuild --spec-dir {spec_dir}")
-    print(f"  3. Add to .gitignore:")
+    print(f"  3. Install agents:   spec-manager init-agents")
+    print(f"  4. Add to .gitignore:")
     for entry in generate_gitignore_entries():
         print(f"       {entry}")
     print()
@@ -74,6 +76,29 @@ def cmd_init(args: argparse.Namespace) -> int:
         config = generate_mcp_config(spec_dir, db_path)
         print("MCP configuration (.mcp.json):")
         print(json.dumps(config, indent=2))
+
+    return 0
+
+
+def cmd_init_agents(args: argparse.Namespace) -> int:
+    """Copy agent files to the project."""
+    agents_dir = Path(args.agents_dir)
+
+    try:
+        counts = init_agents(agents_dir, force=args.force)
+    except FileExistsError as e:
+        print(str(e), file=sys.stderr)
+        return 1
+
+    print(f"Installed agents to: {agents_dir}")
+    print(f"  Agents: {counts['agents']} files")
+    print()
+    print("Available agents:")
+    for agent in AVAILABLE_AGENTS:
+        print(f"  - {agent}")
+    print()
+    print("These agents work with Claude Code or compatible agent runtimes.")
+    print("See each .md file for usage instructions.")
 
     return 0
 
@@ -215,6 +240,20 @@ def main() -> None:
         help="Show MCP configuration for Claude Code",
     )
     p_init.set_defaults(func=cmd_init)
+
+    # init-agents
+    p_init_agents = subparsers.add_parser("init-agents", help="Copy agent files to the project")
+    p_init_agents.add_argument(
+        "--agents-dir",
+        default="./agents",
+        help="Directory to copy agents to (default: ./agents)",
+    )
+    p_init_agents.add_argument(
+        "--force",
+        action="store_true",
+        help="Overwrite existing agent files",
+    )
+    p_init_agents.set_defaults(func=cmd_init_agents)
 
     # rebuild
     p_rebuild = subparsers.add_parser("rebuild", help="Rebuild spec.db from spec/ files")

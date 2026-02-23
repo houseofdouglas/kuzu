@@ -22,3 +22,4 @@ include = ["spec_manager*"]
 
 [tool.setuptools.package-data]
 "spec_manager.presets" = ["**/*.cypher", "**/*.json"]
+"spec_manager.agents" = ["*.md"]

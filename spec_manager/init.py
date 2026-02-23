@@ -5,6 +5,7 @@ Usage:
     spec-manager init                        # Uses 'generic' preset
     spec-manager init --preset spring-boot   # Uses Spring Boot preset
     spec-manager init --spec-dir ./spec      # Custom spec directory
+    spec-manager init-agents                 # Copy agent files to ./agents/
 """
 
 from __future__ import annotations
@@ -13,6 +14,7 @@ import shutil
 from pathlib import Path
 
 from .presets import AVAILABLE_PRESETS, get_preset_dir
+from .agents import AGENTS_DIR, AVAILABLE_AGENTS
 
 
 def init_spec(
@@ -90,3 +92,38 @@ def generate_gitignore_entries() -> list[str]:
         "spec.db.wal",
         "spec.db.lock",
     ]
+
+
+def init_agents(
+    agents_dir: Path,
+    force: bool = False,
+) -> dict[str, int]:
+    """
+    Copy agent markdown files to the target directory.
+
+    Args:
+        agents_dir: Target directory for agent files
+        force: If True, overwrite existing files
+
+    Returns:
+        Count of agents copied
+    """
+    if agents_dir.exists() and not force:
+        existing = list(agents_dir.glob("*.md"))
+        if existing:
+            raise FileExistsError(
+                f"Agents directory already has files: {agents_dir}\n"
+                "Use --force to overwrite."
+            )
+
+    agents_dir.mkdir(parents=True, exist_ok=True)
+
+    copied = 0
+    for agent_name in AVAILABLE_AGENTS:
+        src = AGENTS_DIR / f"{agent_name}.md"
+        dst = agents_dir / f"{agent_name}.md"
+        if src.exists():
+            shutil.copy2(src, dst)
+            copied += 1
+
+    return {"agents": copied}
