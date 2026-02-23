@@ -11,9 +11,14 @@ dependencies = [
     "kuzu>=0.5.0",
     "fastmcp>=3.0",
 ]
+readme = "README.md"
+license = {text = "MIT"}
 
 [project.scripts]
 spec-manager = "spec_manager.cli:main"
 
 [tool.setuptools.packages.find]
 include = ["spec_manager*"]
+
+[tool.setuptools.package-data]
+"spec_manager.presets" = ["**/*.cypher", "**/*.json"]

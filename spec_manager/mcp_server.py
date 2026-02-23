@@ -44,7 +44,8 @@ def _get_db() -> SpecDB:
     global _db
     if _db is None:
         db_path = os.environ.get("SPEC_DB_PATH", str(DEFAULT_DB_PATH))
-        _db = SpecDB(db_path)
+        spec_dir = os.environ.get("SPEC_DIR", str(DEFAULT_SPEC_DIR))
+        _db = SpecDB(db_path, spec_dir)
     return _db
 
 

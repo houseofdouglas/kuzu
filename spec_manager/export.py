@@ -10,23 +10,7 @@ from __future__ import annotations
 import json
 import pathlib
 
-from .db import (
-    SpecDB,
-    DEFAULT_SPEC_DIR,
-    TABLE_TO_NODE_FILE,
-    TABLE_TO_EDGE_FILE,
-)
-from .nodes import NODE_COLUMNS
-
-# Properties to export per relation table (all have at least from/to)
-EDGE_EXTRA_PROPS: dict[str, list[str]] = {
-    "DependsOn":   ["strength"],
-    "Implements":  [],
-    "DerivedFrom": [],
-    "Conflicts":   ["reason"],
-    "RelatedTo":   [],
-    "Satisfies":   [],
-}
+from .db import SpecDB, DEFAULT_SPEC_DIR
 
 
 def export_to_files(
@@ -47,11 +31,18 @@ def export_to_files(
     nodes_dir.mkdir(parents=True, exist_ok=True)
     edges_dir.mkdir(parents=True, exist_ok=True)
 
+    # Use schema info from the SpecDB (dynamically discovered)
+    schema = db.schema_info
+
     counts: dict[str, int] = {}
 
     # ── Export nodes ─────────────────────────────────────────────────────────
-    for table, filename in TABLE_TO_NODE_FILE.items():
-        cols = NODE_COLUMNS.get(table, ["id", "name"])
+    for table in schema.node_tables:
+        filename = schema.table_to_node_file.get(table)
+        if not filename:
+            continue
+
+        cols = schema.node_columns.get(table, ["id", "name"])
         select = ", ".join(f"n.{c} AS {c}" for c in cols)
         try:
             rows = db.query(f"MATCH (n:{table}) RETURN {select} ORDER BY n.id")
@@ -63,8 +54,12 @@ def export_to_files(
         counts[filename] = len(rows)
 
     # ── Export edges ─────────────────────────────────────────────────────────
-    for table, filename in TABLE_TO_EDGE_FILE.items():
-        extra = EDGE_EXTRA_PROPS.get(table, [])
+    for table in schema.edge_tables:
+        filename = schema.table_to_edge_file.get(table)
+        if not filename:
+            continue
+
+        extra = schema.edge_columns.get(table, [])
         extra_select = (", " + ", ".join(f"e.{p} AS {p}" for p in extra)) if extra else ""
         try:
             rows = db.query(
