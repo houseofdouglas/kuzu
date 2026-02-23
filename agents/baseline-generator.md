@@ -29,15 +29,18 @@ spec.db                # Derived runtime database — .gitignore'd
 3. **Never edit spec.db directly** — it's a binary Kuzu database
 4. After any changes to `spec/` JSON files, run: `spec-manager rebuild`
 
-**If MCP tools are available** (check for `spec-manager` in MCP servers):
-- Use `write_spec_node`, `write_spec_edge` to create nodes/edges
+**For bulk operations (baseline generation, importing many nodes):**
+1. Edit `spec/nodes/*.json` directly — add node objects to the arrays
+2. Edit `spec/edges/*.json` directly — add edge objects `{"from": "id1", "to": "id2"}`
+3. Run `spec-manager rebuild` — this bulk-imports ALL JSON files into spec.db
+4. Run `spec-manager detect-cycles` to validate
+
+**This is the preferred workflow for baseline generation.** Do NOT call `write_spec_node` repeatedly for bulk imports — just edit the JSON files and run `rebuild`.
+
+**For single-node operations** (if MCP tools available):
+- Use `write_spec_node`, `write_spec_edge` to create individual nodes/edges
 - Use `export_to_files_tool` after writes to sync spec.db → spec/ JSON
 - Use `query_spec` for Cypher queries
-
-**If MCP tools are NOT available** (CLI fallback):
-- Edit `spec/nodes/*.json` and `spec/edges/*.json` directly
-- Run `spec-manager rebuild` to regenerate spec.db
-- Run `spec-manager detect-cycles` to validate
 
 ---
 

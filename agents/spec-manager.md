@@ -26,22 +26,31 @@ spec.db                # Derived runtime database — .gitignore'd
 2. `spec.db` is **derived** — never commit it, regenerate with `spec-manager rebuild`
 3. **Always export after writes** — keep spec/ in sync with spec.db
 
-**Preferred: Use MCP tools** (if `spec-manager` MCP server is configured):
+**Two workflows available:**
+
+### Workflow A: Bulk operations via JSON + rebuild (PREFERRED for large changes)
+1. Edit `spec/nodes/<table>.json` — add/modify node objects in the array
+2. Edit `spec/edges/<relation>.json` — add edge objects `{"from": "id1", "to": "id2"}`
+3. Run `spec-manager rebuild` to regenerate spec.db from ALL JSON files
+4. Run `spec-manager detect-cycles` to validate
+
+**This is the bulk import mechanism.** `rebuild` loads all JSON files at once — no need to call write_spec_node repeatedly.
+
+### Workflow B: Incremental via MCP tools (for single-node operations)
 ```
-write_spec_node(table, properties)  → creates node in spec.db
-write_spec_edge(table, from_id, to_id, props)  → creates edge
+write_spec_node(table, properties)  → creates ONE node in spec.db
+write_spec_edge(table, from_id, to_id, props)  → creates ONE edge
 export_to_files_tool()  → syncs spec.db → spec/ JSON files
 detect_cycles_tool()  → validates DAG integrity
 query_spec(cypher)  → runs read queries
 ```
 
-**After EVERY write operation, call `export_to_files_tool()`** to update the JSON files.
+**After EVERY MCP write operation, call `export_to_files_tool()`** to sync back to JSON.
 
-**Fallback: Edit JSON directly** (if MCP unavailable):
-1. Edit `spec/nodes/<table>.json` — add/modify node objects in the array
-2. Edit `spec/edges/<relation>.json` — add edge objects `{"from": "id1", "to": "id2"}`
-3. Run `spec-manager rebuild` to regenerate spec.db
-4. Run `spec-manager detect-cycles` to validate
+### When to use which:
+- **Bulk baseline generation**: Edit JSON files directly, then `spec-manager rebuild`
+- **Adding a single node**: Use MCP `write_spec_node` + `export_to_files_tool`
+- **Importing 10+ nodes**: Edit JSON, then `spec-manager rebuild` (much faster)
 
 ---
 
