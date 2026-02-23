@@ -101,3 +101,43 @@ Tests use Google Test. End-to-end tests in `test/test_files/` (`.cypher` files) 
 ## Code Style
 
 The repo uses `.clang-format` for formatting and `.clang-tidy` for static analysis. C++20 is required. Platform support: Linux, macOS, Windows.
+
+## Spec Management
+
+This repository uses a graph-based specification system built on Kuzu.
+
+```
+agents/          # Claude agent definitions for spec management (6 agents)
+spec/            # Source of truth — committed to git
+  schema.cypher  # DDL for all node and edge tables
+  nodes/         # One JSON array file per node type
+  edges/         # One JSON array file per edge type
+spec.db          # Derived — .gitignore'd, rebuilt from spec/ on load
+specifications/  # Design documentation for the spec system itself
+```
+
+**Note:** JSON files in `spec/nodes/` and `spec/edges/` use JSONC format — `//` line comments are allowed. Strip them before parsing with `json.loads()`:
+
+```python
+import json, kuzu, pathlib
+
+def strip_comments(text):
+    lines = [l for l in text.splitlines() if not l.strip().startswith("//")]
+    return "\n".join(lines)
+
+def parse_statements(sql):
+    return [s.strip() for s in strip_comments(sql).split(";") if s.strip()]
+
+db = kuzu.Database("spec.db")
+conn = kuzu.Connection(db)
+for stmt in parse_statements(pathlib.Path("spec/schema.cypher").read_text()):
+    conn.execute(stmt)
+# Data is loaded by spec-manager via parameterized MERGE queries (see agents/spec-manager.md)
+```
+
+**Agent pipeline:**
+- `baseline-generator` → `repo-explorer` — bootstrap a spec from an existing codebase
+- `spec-author` → `feature-analyst` → `spec-manager` — add/update spec nodes day-to-day
+- `merge-coordinator` — reconcile branch spec divergence at PR time
+
+Requires: `pip install kuzu`
