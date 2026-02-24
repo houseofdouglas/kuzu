@@ -98,7 +98,20 @@ CREATE NODE TABLE IF NOT EXISTS Requirement(
     id          STRING,
     name        STRING,
     description STRING,
-    priority    STRING,   // p0 | p1 | p2 | p3
+    priority    STRING,        // p0 | p1 | p2 | p3
+    test_coverage STRING,      // required | recommended | none
+    status      STRING,
+    PRIMARY KEY (id)
+);
+
+// A test suite or test category that verifies functionality
+CREATE NODE TABLE IF NOT EXISTS TestSuite(
+    id          STRING,
+    name        STRING,
+    description STRING,
+    path        STRING,        // src/test/java/com/example/UserServiceTest.java
+    kind        STRING,        // unit | integration | e2e | contract | performance
+    framework   STRING,        // junit | testng | cucumber | spring-test | mockito
     status      STRING,
     PRIMARY KEY (id)
 );
@@ -234,6 +247,25 @@ CREATE REL TABLE IF NOT EXISTS Conflicts(
     FROM Configuration TO Configuration,
     FROM Endpoint TO Endpoint,
     reason      STRING
+);
+
+// ─── Test Relationships ─────────────────────────────────────────────────────
+// These link test suites to the features and components they verify
+
+// Feature/Component is verified by a TestSuite
+CREATE REL TABLE IF NOT EXISTS VerifiedBy(
+    FROM Feature TO TestSuite,
+    FROM Endpoint TO TestSuite,
+    FROM Controller TO TestSuite,
+    FROM Service TO TestSuite,
+    FROM Repository TO TestSuite,
+    FROM Configuration TO TestSuite,
+    coverage    STRING    // full | partial | smoke
+);
+
+// TestSuite depends on another TestSuite (test utilities, fixtures)
+CREATE REL TABLE IF NOT EXISTS TestDependsOn(
+    FROM TestSuite TO TestSuite
 );
 
 // ─── Security Relationships ──────────────────────────────────────────────────

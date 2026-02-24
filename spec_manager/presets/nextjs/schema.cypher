@@ -121,7 +121,20 @@ CREATE NODE TABLE IF NOT EXISTS Requirement(
     id          STRING,
     name        STRING,
     description STRING,
-    priority    STRING,   // p0 | p1 | p2 | p3
+    priority    STRING,        // p0 | p1 | p2 | p3
+    test_coverage STRING,      // required | recommended | none
+    status      STRING,
+    PRIMARY KEY (id)
+);
+
+// A test suite or test category that verifies functionality
+CREATE NODE TABLE IF NOT EXISTS TestSuite(
+    id          STRING,
+    name        STRING,
+    description STRING,
+    path        STRING,        // __tests__/auth.test.ts, e2e/checkout.spec.ts
+    kind        STRING,        // unit | integration | e2e | component | snapshot
+    framework   STRING,        // jest | vitest | playwright | cypress | testing-library
     status      STRING,
     PRIMARY KEY (id)
 );
@@ -287,6 +300,26 @@ CREATE REL TABLE IF NOT EXISTS Conflicts(
     FROM Component TO Component,
     FROM Page TO Page,
     reason      STRING
+);
+
+// ─── Test Relationships ─────────────────────────────────────────────────────
+// These link test suites to the features and components they verify
+
+// Feature/Component is verified by a TestSuite
+CREATE REL TABLE IF NOT EXISTS VerifiedBy(
+    FROM Feature TO TestSuite,
+    FROM Page TO TestSuite,
+    FROM Component TO TestSuite,
+    FROM ApiRoute TO TestSuite,
+    FROM Service TO TestSuite,
+    FROM Hook TO TestSuite,
+    FROM Middleware TO TestSuite,
+    coverage    STRING    // full | partial | smoke
+);
+
+// TestSuite depends on another TestSuite (test utilities, fixtures)
+CREATE REL TABLE IF NOT EXISTS TestDependsOn(
+    FROM TestSuite TO TestSuite
 );
 
 // ─── Security Relationships ──────────────────────────────────────────────────
