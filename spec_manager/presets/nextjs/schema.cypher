@@ -11,6 +11,7 @@ CREATE NODE TABLE IF NOT EXISTS Page(
     route       STRING,   // /dashboard, /users/[id], etc.
     router      STRING,   // app | pages
     rendering   STRING,   // server | client | static | dynamic
+    auth        STRING,   // public | authenticated | role-based
     status      STRING,   // proposed | active | deprecated | removed
     PRIMARY KEY (id)
 );
@@ -34,6 +35,7 @@ CREATE NODE TABLE IF NOT EXISTS ApiRoute(
     description STRING,
     route       STRING,   // /api/users, /api/auth/[...nextauth]
     methods     STRING,   // GET | POST | PUT | DELETE | PATCH (comma-separated)
+    auth        STRING,   // public | authenticated | role-based
     status      STRING,
     PRIMARY KEY (id)
 );
@@ -79,6 +81,17 @@ CREATE NODE TABLE IF NOT EXISTS Service(
     PRIMARY KEY (id)
 );
 
+// Next.js middleware for request processing
+CREATE NODE TABLE IF NOT EXISTS Middleware(
+    id          STRING,
+    name        STRING,
+    description STRING,
+    matcher     STRING,   // Route matcher pattern
+    purpose     STRING,   // auth | redirect | rewrite | headers
+    status      STRING,
+    PRIMARY KEY (id)
+);
+
 // A user-visible feature or capability
 CREATE NODE TABLE IF NOT EXISTS Feature(
     id          STRING,
@@ -94,6 +107,30 @@ CREATE NODE TABLE IF NOT EXISTS Requirement(
     name        STRING,
     description STRING,
     priority    STRING,   // p0 | p1 | p2 | p3
+    status      STRING,
+    PRIMARY KEY (id)
+);
+
+// ─── Security Node Tables ────────────────────────────────────────────────────
+
+// A security constraint or policy
+CREATE NODE TABLE IF NOT EXISTS SecurityConstraint(
+    id          STRING,
+    name        STRING,
+    description STRING,
+    constraint_type STRING,   // authentication | authorization | rate-limit | cors | csrf
+    severity    STRING,       // critical | high | medium | low
+    enforcement STRING,       // required | recommended | optional
+    status      STRING,
+    PRIMARY KEY (id)
+);
+
+// A role or permission that grants access
+CREATE NODE TABLE IF NOT EXISTS Role(
+    id          STRING,
+    name        STRING,
+    description STRING,
+    role_type   STRING,   // system | user | service | admin
     status      STRING,
     PRIMARY KEY (id)
 );
@@ -167,6 +204,13 @@ CREATE REL TABLE IF NOT EXISTS Wraps(
     FROM Context TO Component
 );
 
+// Middleware protects routes
+CREATE REL TABLE IF NOT EXISTS Protects(
+    FROM Middleware TO Page,
+    FROM Middleware TO ApiRoute,
+    FROM Middleware TO Layout
+);
+
 // Informational link
 CREATE REL TABLE IF NOT EXISTS RelatedTo(
     FROM Feature TO Feature,
@@ -180,4 +224,35 @@ CREATE REL TABLE IF NOT EXISTS Conflicts(
     FROM Feature TO Feature,
     FROM Component TO Component,
     reason      STRING
+);
+
+// ─── Security Relationship Tables ─────────────────────────────────────────────
+
+// Page/ApiRoute/Service is secured by a SecurityConstraint
+// CRITICAL: Changes to this relationship require security review
+CREATE REL TABLE IF NOT EXISTS SecuredBy(
+    FROM Page TO SecurityConstraint,
+    FROM ApiRoute TO SecurityConstraint,
+    FROM Service TO SecurityConstraint,
+    FROM Middleware TO SecurityConstraint,
+    enforced_at STRING    // route | middleware | component
+);
+
+// Page/ApiRoute requires a specific Role for access
+// CRITICAL: Changes to this relationship require security review
+CREATE REL TABLE IF NOT EXISTS RequiresRole(
+    FROM Page TO Role,
+    FROM ApiRoute TO Role,
+    FROM Service TO Role,
+    access_type STRING    // read | write | admin | full
+);
+
+// Role inherits permissions from another Role
+CREATE REL TABLE IF NOT EXISTS InheritsFrom(
+    FROM Role TO Role
+);
+
+// SecurityConstraint enforces a Requirement
+CREATE REL TABLE IF NOT EXISTS Enforces(
+    FROM SecurityConstraint TO Requirement
 );

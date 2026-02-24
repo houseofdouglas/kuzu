@@ -10,6 +10,7 @@ CREATE NODE TABLE IF NOT EXISTS Endpoint(
     description STRING,
     method      STRING,   // GET | POST | PUT | DELETE | PATCH | MESSAGE
     path        STRING,   // /api/users/{id}
+    auth        STRING,   // public | authenticated | role-based
     status      STRING,   // proposed | active | deprecated | removed
     PRIMARY KEY (id)
 );
@@ -98,6 +99,30 @@ CREATE NODE TABLE IF NOT EXISTS Requirement(
     PRIMARY KEY (id)
 );
 
+// ─── Security Node Tables ────────────────────────────────────────────────────
+
+// A security constraint or policy (authentication, authorization, rate limiting)
+CREATE NODE TABLE IF NOT EXISTS SecurityConstraint(
+    id          STRING,
+    name        STRING,
+    description STRING,
+    constraint_type STRING,   // authentication | authorization | rate-limit | cors | csrf | encryption
+    severity    STRING,       // critical | high | medium | low
+    enforcement STRING,       // required | recommended | optional
+    status      STRING,
+    PRIMARY KEY (id)
+);
+
+// A role or permission that grants access
+CREATE NODE TABLE IF NOT EXISTS Role(
+    id          STRING,
+    name        STRING,
+    description STRING,
+    role_type   STRING,   // system | user | service | admin
+    status      STRING,
+    PRIMARY KEY (id)
+);
+
 // ─── Relationship Tables ──────────────────────────────────────────────────────
 
 // Controller exposes Endpoint
@@ -172,4 +197,35 @@ CREATE REL TABLE IF NOT EXISTS Conflicts(
     FROM Feature TO Feature,
     FROM Configuration TO Configuration,
     reason      STRING
+);
+
+// ─── Security Relationship Tables ─────────────────────────────────────────────
+
+// Endpoint/Service/Controller is secured by a SecurityConstraint
+// CRITICAL: Changes to this relationship require security review
+CREATE REL TABLE IF NOT EXISTS SecuredBy(
+    FROM Endpoint TO SecurityConstraint,
+    FROM Service TO SecurityConstraint,
+    FROM Controller TO SecurityConstraint,
+    FROM Configuration TO SecurityConstraint,
+    enforced_at STRING    // method | class | global
+);
+
+// Endpoint/Service requires a specific Role for access
+// CRITICAL: Changes to this relationship require security review
+CREATE REL TABLE IF NOT EXISTS RequiresRole(
+    FROM Endpoint TO Role,
+    FROM Service TO Role,
+    FROM Controller TO Role,
+    access_type STRING    // read | write | admin | full
+);
+
+// Role inherits permissions from another Role
+CREATE REL TABLE IF NOT EXISTS InheritsFrom(
+    FROM Role TO Role
+);
+
+// SecurityConstraint enforces a Requirement
+CREATE REL TABLE IF NOT EXISTS Enforces(
+    FROM SecurityConstraint TO Requirement
 );
