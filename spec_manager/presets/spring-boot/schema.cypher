@@ -1,5 +1,9 @@
 // Spring Boot Spec Graph Schema
 // Tailored for Spring Boot / Java applications
+//
+// DESIGN PRINCIPLE: Every relationship has specific semantics.
+// Use the most specific relationship type available.
+// RelatedTo is reserved for Feature↔Feature and Feature↔Requirement only.
 
 // ─── Node Tables ─────────────────────────────────────────────────────────────
 
@@ -123,100 +127,134 @@ CREATE NODE TABLE IF NOT EXISTS Role(
     PRIMARY KEY (id)
 );
 
-// ─── Relationship Tables ──────────────────────────────────────────────────────
+// ─── Structural Relationships ────────────────────────────────────────────────
+// These define the architecture: what exposes what, what contains what
 
 // Controller exposes Endpoint
 CREATE REL TABLE IF NOT EXISTS Exposes(
     FROM Controller TO Endpoint
 );
 
-// Controller/Service depends on Service
-CREATE REL TABLE IF NOT EXISTS DependsOn(
-    FROM Controller TO Service,
-    FROM Service TO Service,
-    FROM Service TO Repository,
-    FROM Configuration TO Service,
-    FROM Configuration TO Repository,
-    strength    STRING    // required | optional
-);
-
-// Repository manages Entity
+// Repository manages Entity (CRUD operations)
 CREATE REL TABLE IF NOT EXISTS Manages(
     FROM Repository TO Entity
 );
 
-// Endpoint accepts/returns DTO
+// Configuration configures components
+CREATE REL TABLE IF NOT EXISTS Configures(
+    FROM Configuration TO Service,
+    FROM Configuration TO Repository,
+    FROM Configuration TO Controller,
+    FROM Configuration TO Endpoint
+);
+
+// ─── Dependency Relationships ────────────────────────────────────────────────
+// These define runtime dependencies: A needs B to function
+
+// Component depends on another component (injection, method calls)
+CREATE REL TABLE IF NOT EXISTS DependsOn(
+    FROM Controller TO Service,
+    FROM Controller TO Repository,
+    FROM Controller TO Controller,
+    FROM Service TO Service,
+    FROM Service TO Repository,
+    FROM Repository TO Repository,
+    FROM Configuration TO Service,
+    FROM Configuration TO Repository,
+    FROM Configuration TO Configuration,
+    strength    STRING    // required | optional
+);
+
+// ─── Data Flow Relationships ─────────────────────────────────────────────────
+// These define how data moves through the system
+
+// Endpoint/Controller/Service uses DTO for data transfer
 CREATE REL TABLE IF NOT EXISTS UsesDTO(
     FROM Endpoint TO DTO,
+    FROM Controller TO DTO,
+    FROM Service TO DTO,
     direction   STRING    // request | response | both
 );
 
-// Entity has relationship to another Entity
-CREATE REL TABLE IF NOT EXISTS References(
-    FROM Entity TO Entity,
-    relation    STRING    // one-to-one | one-to-many | many-to-one | many-to-many
-);
-
-// Service maps between Entity and DTO
+// Service transforms between Entity and DTO
 CREATE REL TABLE IF NOT EXISTS Maps(
     FROM Service TO Entity,
     FROM Service TO DTO
 );
 
-// Feature is implemented by Controller/Service/Endpoint
+// Entity/DTO references another Entity/DTO (composition, embedding)
+CREATE REL TABLE IF NOT EXISTS References(
+    FROM Entity TO Entity,
+    FROM DTO TO DTO,
+    FROM DTO TO Entity,
+    relation    STRING    // one-to-one | one-to-many | many-to-one | many-to-many | embeds
+);
+
+// ─── Feature Relationships ───────────────────────────────────────────────────
+// These link business capabilities to technical implementations
+
+// Feature is implemented by technical components
 CREATE REL TABLE IF NOT EXISTS Implements(
     FROM Feature TO Controller,
     FROM Feature TO Service,
-    FROM Feature TO Endpoint
+    FROM Feature TO Repository,
+    FROM Feature TO Endpoint,
+    FROM Feature TO Configuration
 );
 
-// Feature satisfies Requirement
+// Feature/Component satisfies a Requirement
 CREATE REL TABLE IF NOT EXISTS Satisfies(
     FROM Feature TO Requirement,
     FROM Service TO Requirement,
-    FROM Configuration TO Requirement
+    FROM Controller TO Requirement,
+    FROM Repository TO Requirement,
+    FROM Configuration TO Requirement,
+    FROM Endpoint TO Requirement
 );
 
-// Configuration configures other components
-CREATE REL TABLE IF NOT EXISTS Configures(
-    FROM Configuration TO Service,
-    FROM Configuration TO Repository,
-    FROM Configuration TO Controller
+// Feature depends on another Feature (business-level dependency)
+CREATE REL TABLE IF NOT EXISTS FeatureDependsOn(
+    FROM Feature TO Feature,
+    strength    STRING    // required | optional
 );
 
-// Informational link
+// ─── Informational Relationships ─────────────────────────────────────────────
+// Loose coupling for documentation purposes only
+
+// Informational link (NARROW: Feature-level only)
+// Use specific relationships for technical components
 CREATE REL TABLE IF NOT EXISTS RelatedTo(
     FROM Feature TO Feature,
-    FROM Service TO Service,
-    FROM Entity TO Entity,
     FROM Feature TO Requirement
 );
 
-// A and B cannot coexist
+// A and B cannot coexist (mutual exclusion)
 CREATE REL TABLE IF NOT EXISTS Conflicts(
     FROM Feature TO Feature,
     FROM Configuration TO Configuration,
+    FROM Endpoint TO Endpoint,
     reason      STRING
 );
 
-// ─── Security Relationship Tables ─────────────────────────────────────────────
+// ─── Security Relationships ──────────────────────────────────────────────────
+// CRITICAL: Changes to these relationships require security review
 
-// Endpoint/Service/Controller is secured by a SecurityConstraint
-// CRITICAL: Changes to this relationship require security review
+// Component is secured by a SecurityConstraint
 CREATE REL TABLE IF NOT EXISTS SecuredBy(
     FROM Endpoint TO SecurityConstraint,
-    FROM Service TO SecurityConstraint,
     FROM Controller TO SecurityConstraint,
+    FROM Service TO SecurityConstraint,
+    FROM Repository TO SecurityConstraint,
     FROM Configuration TO SecurityConstraint,
     enforced_at STRING    // method | class | global
 );
 
-// Endpoint/Service requires a specific Role for access
-// CRITICAL: Changes to this relationship require security review
+// Component requires a specific Role for access
 CREATE REL TABLE IF NOT EXISTS RequiresRole(
     FROM Endpoint TO Role,
-    FROM Service TO Role,
     FROM Controller TO Role,
+    FROM Service TO Role,
+    FROM Repository TO Role,
     access_type STRING    // read | write | admin | full
 );
 

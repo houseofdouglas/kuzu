@@ -1,5 +1,9 @@
 // Next.js Spec Graph Schema
 // Tailored for Next.js applications (App Router or Pages Router)
+//
+// DESIGN PRINCIPLE: Every relationship has specific semantics.
+// Use the most specific relationship type available.
+// RelatedTo is reserved for Feature↔Feature and Feature↔Requirement only.
 
 // ─── Node Tables ─────────────────────────────────────────────────────────────
 
@@ -92,6 +96,17 @@ CREATE NODE TABLE IF NOT EXISTS Middleware(
     PRIMARY KEY (id)
 );
 
+// A TypeScript type or interface
+CREATE NODE TABLE IF NOT EXISTS TypeDef(
+    id          STRING,
+    name        STRING,
+    description STRING,
+    path        STRING,   // types/user.ts
+    kind        STRING,   // interface | type | enum
+    status      STRING,
+    PRIMARY KEY (id)
+);
+
 // A user-visible feature or capability
 CREATE NODE TABLE IF NOT EXISTS Feature(
     id          STRING,
@@ -135,69 +150,23 @@ CREATE NODE TABLE IF NOT EXISTS Role(
     PRIMARY KEY (id)
 );
 
-// ─── Relationship Tables ──────────────────────────────────────────────────────
+// ─── Structural Relationships ────────────────────────────────────────────────
+// These define the architecture: what renders what, what contains what
 
-// Page/Layout renders Component
+// Page/Layout/Component renders Component
 CREATE REL TABLE IF NOT EXISTS Renders(
     FROM Page TO Component,
     FROM Layout TO Component,
     FROM Component TO Component
 );
 
-// Component/Page uses Hook
-CREATE REL TABLE IF NOT EXISTS UsesHook(
-    FROM Page TO Hook,
-    FROM Component TO Hook,
-    FROM Hook TO Hook
-);
-
-// Component/Page uses Context
-CREATE REL TABLE IF NOT EXISTS UsesContext(
-    FROM Page TO Context,
-    FROM Component TO Context,
-    FROM Layout TO Context
-);
-
-// Component/Page calls ApiRoute or Service
-CREATE REL TABLE IF NOT EXISTS Calls(
-    FROM Page TO ApiRoute,
-    FROM Component TO ApiRoute,
-    FROM Page TO Service,
-    FROM Component TO Service,
-    FROM ApiRoute TO Service,
-    FROM Service TO Service
-);
-
-// General dependency
-CREATE REL TABLE IF NOT EXISTS DependsOn(
-    FROM Page TO Page,
-    FROM Component TO Component,
-    FROM Service TO Service,
-    FROM Feature TO Feature,
-    strength    STRING    // required | optional
-);
-
-// Feature is implemented by Page/Component/ApiRoute
-CREATE REL TABLE IF NOT EXISTS Implements(
-    FROM Feature TO Page,
-    FROM Feature TO Component,
-    FROM Feature TO ApiRoute,
-    FROM Feature TO Service
-);
-
-// Feature/Service satisfies Requirement
-CREATE REL TABLE IF NOT EXISTS Satisfies(
-    FROM Feature TO Requirement,
-    FROM Service TO Requirement,
-    FROM ApiRoute TO Requirement
-);
-
-// Page belongs to Layout
+// Page belongs to Layout (route nesting)
 CREATE REL TABLE IF NOT EXISTS BelongsTo(
-    FROM Page TO Layout
+    FROM Page TO Layout,
+    FROM Layout TO Layout
 );
 
-// Context wraps other components/pages
+// Context wraps pages/layouts/components (provider tree)
 CREATE REL TABLE IF NOT EXISTS Wraps(
     FROM Context TO Page,
     FROM Context TO Layout,
@@ -211,39 +180,134 @@ CREATE REL TABLE IF NOT EXISTS Protects(
     FROM Middleware TO Layout
 );
 
-// Informational link
+// ─── Dependency Relationships ────────────────────────────────────────────────
+// These define runtime dependencies: A needs B to function
+
+// Component/Page uses Hook
+CREATE REL TABLE IF NOT EXISTS UsesHook(
+    FROM Page TO Hook,
+    FROM Component TO Hook,
+    FROM Layout TO Hook,
+    FROM Hook TO Hook,
+    FROM ApiRoute TO Hook
+);
+
+// Component/Page uses Context
+CREATE REL TABLE IF NOT EXISTS UsesContext(
+    FROM Page TO Context,
+    FROM Component TO Context,
+    FROM Layout TO Context
+);
+
+// Component/Page/ApiRoute calls Service or ApiRoute
+CREATE REL TABLE IF NOT EXISTS Calls(
+    FROM Page TO ApiRoute,
+    FROM Page TO Service,
+    FROM Component TO ApiRoute,
+    FROM Component TO Service,
+    FROM Layout TO Service,
+    FROM ApiRoute TO Service,
+    FROM ApiRoute TO ApiRoute,
+    FROM Service TO Service,
+    FROM Service TO ApiRoute,
+    FROM Hook TO Service,
+    FROM Hook TO ApiRoute
+);
+
+// General component dependency
+CREATE REL TABLE IF NOT EXISTS DependsOn(
+    FROM Component TO Component,
+    FROM Service TO Service,
+    FROM Hook TO Hook,
+    FROM Page TO Page,
+    strength    STRING    // required | optional
+);
+
+// ─── Data Flow Relationships ─────────────────────────────────────────────────
+// These define how data types flow through the system
+
+// Component/Service/ApiRoute uses TypeDef
+CREATE REL TABLE IF NOT EXISTS UsesType(
+    FROM Component TO TypeDef,
+    FROM Service TO TypeDef,
+    FROM ApiRoute TO TypeDef,
+    FROM Hook TO TypeDef,
+    FROM Page TO TypeDef,
+    usage       STRING    // props | state | request | response | internal
+);
+
+// TypeDef references another TypeDef (composition, extension)
+CREATE REL TABLE IF NOT EXISTS References(
+    FROM TypeDef TO TypeDef,
+    relation    STRING    // extends | contains | uses
+);
+
+// ─── Feature Relationships ───────────────────────────────────────────────────
+// These link business capabilities to technical implementations
+
+// Feature is implemented by technical components
+CREATE REL TABLE IF NOT EXISTS Implements(
+    FROM Feature TO Page,
+    FROM Feature TO Component,
+    FROM Feature TO ApiRoute,
+    FROM Feature TO Service,
+    FROM Feature TO Hook,
+    FROM Feature TO Middleware
+);
+
+// Feature/Component satisfies a Requirement
+CREATE REL TABLE IF NOT EXISTS Satisfies(
+    FROM Feature TO Requirement,
+    FROM Page TO Requirement,
+    FROM ApiRoute TO Requirement,
+    FROM Service TO Requirement,
+    FROM Component TO Requirement,
+    FROM Middleware TO Requirement
+);
+
+// Feature depends on another Feature (business-level dependency)
+CREATE REL TABLE IF NOT EXISTS FeatureDependsOn(
+    FROM Feature TO Feature,
+    strength    STRING    // required | optional
+);
+
+// ─── Informational Relationships ─────────────────────────────────────────────
+// Loose coupling for documentation purposes only
+
+// Informational link (NARROW: Feature-level only)
+// Use specific relationships for technical components
 CREATE REL TABLE IF NOT EXISTS RelatedTo(
     FROM Feature TO Feature,
-    FROM Component TO Component,
-    FROM Page TO Page,
     FROM Feature TO Requirement
 );
 
-// A and B cannot coexist
+// A and B cannot coexist (mutual exclusion)
 CREATE REL TABLE IF NOT EXISTS Conflicts(
     FROM Feature TO Feature,
     FROM Component TO Component,
+    FROM Page TO Page,
     reason      STRING
 );
 
-// ─── Security Relationship Tables ─────────────────────────────────────────────
+// ─── Security Relationships ──────────────────────────────────────────────────
+// CRITICAL: Changes to these relationships require security review
 
-// Page/ApiRoute/Service is secured by a SecurityConstraint
-// CRITICAL: Changes to this relationship require security review
+// Component is secured by a SecurityConstraint
 CREATE REL TABLE IF NOT EXISTS SecuredBy(
     FROM Page TO SecurityConstraint,
     FROM ApiRoute TO SecurityConstraint,
     FROM Service TO SecurityConstraint,
     FROM Middleware TO SecurityConstraint,
+    FROM Component TO SecurityConstraint,
     enforced_at STRING    // route | middleware | component
 );
 
-// Page/ApiRoute requires a specific Role for access
-// CRITICAL: Changes to this relationship require security review
+// Component requires a specific Role for access
 CREATE REL TABLE IF NOT EXISTS RequiresRole(
     FROM Page TO Role,
     FROM ApiRoute TO Role,
     FROM Service TO Role,
+    FROM Component TO Role,
     access_type STRING    // read | write | admin | full
 );
 
